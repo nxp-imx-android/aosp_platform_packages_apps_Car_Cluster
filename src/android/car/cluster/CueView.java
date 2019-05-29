@@ -49,14 +49,20 @@ public class CueView extends TextView {
 
     public CueView(Context context) {
         super(context);
+        init(context);
     }
 
     public CueView(Context context, AttributeSet attrs) {
         super(context, attrs);
+        init(context);
     }
 
     public CueView(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
+        init(context);
+    }
+
+    private void init(Context context) {
         mImageSpanText = context.getString(R.string.span_image);
     }
 
