@@ -18,6 +18,7 @@ package android.car.cluster;
 import static android.car.cluster.ClusterRenderingService.LOCAL_BINDING_ACTION;
 import static android.content.Intent.ACTION_USER_SWITCHED;
 import static android.content.Intent.ACTION_USER_UNLOCKED;
+import static android.content.PermissionChecker.PERMISSION_GRANTED;
 
 import android.app.ActivityManager;
 import android.app.ActivityOptions;
@@ -240,13 +241,8 @@ public class MainClusterActivity extends FragmentActivity implements
 
         mUserReceiver = new UserReceiver(this);
         mUserReceiver.register(this);
-
-        try {
-            InMemoryPhoneBook.get();
-        } catch (IllegalStateException ex) {
-            // Initialize if not yet initialized
-            InMemoryPhoneBook.init(this);
-        }
+        
+        InMemoryPhoneBook.init(this);
 
         PhoneFragmentViewModel phoneViewModel = ViewModelProviders.of(this).get(
                 PhoneFragmentViewModel.class);
@@ -442,6 +438,15 @@ public class MainClusterActivity extends FragmentActivity implements
                 Intent.CATEGORY_APP_MAPS);
         ResolveInfo navigationApp = pm.resolveActivityAsUser(intent,
                 PackageManager.MATCH_DEFAULT_ONLY, userId);
+
+        // Check that it has the right permissions
+        if (pm.checkPermission(Car.PERMISSION_CAR_DISPLAY_IN_CLUSTER, navigationApp.activityInfo
+                .packageName) != PERMISSION_GRANTED) {
+            Log.i(TAG, String.format("Package '%s' doesn't have permission %s",
+                    navigationApp.activityInfo.packageName,
+                    Car.PERMISSION_CAR_DISPLAY_IN_CLUSTER));
+            return null;
+        }
 
         // Get all possible cluster activities
         intent = new Intent(Intent.ACTION_MAIN).addCategory(CarInstrumentClusterManager
