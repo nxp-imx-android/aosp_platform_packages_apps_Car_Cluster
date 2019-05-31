@@ -56,6 +56,9 @@
                  android:exported="false"
                  android:singleUser="true"
                  android:permission="android.car.permission.BIND_INSTRUMENT_CLUSTER_RENDERER_SERVICE"/>
+        <service android:name=".LoggingClusterRenderingService"
+                 android:exported="false"
+                 android:permission="android.car.permission.BIND_INSTRUMENT_CLUSTER_RENDERER_SERVICE"/>
 
         <activity android:name=".MainClusterActivity"
             android:exported="false"
