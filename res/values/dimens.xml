@@ -21,8 +21,9 @@
     <dimen name="info_value_text_size">20sp</dimen>
 
     <!--                              -->
-    <!-- Navigation state componenets -->
+    <!-- Navigation state components  -->
     <!--                              -->
+    <dimen name="title_text_size">40sp</dimen>
     <dimen name="nav_state_width">170dp</dimen>
     <!-- Maneuver -->
     <dimen name="maneuver_width">60dp</dimen>
@@ -56,6 +57,9 @@
     <!-- Distance: kilometers to meters -->
     <item name="distance_factor" format="float" type="dimen">1000</item>
 
+    <!--             -->
+    <!-- Media Facet -->
+    <!--             -->
     <!-- fragment_metadata.xml -->
     <dimen name="fragment_metadata_queue_divider_margin">@*android:dimen/car_keyline_1</dimen>
     <dimen name="fragment_metadata_queue_margin_top">@*android:dimen/car_padding_4</dimen>
