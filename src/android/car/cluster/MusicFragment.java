@@ -29,11 +29,9 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.lifecycle.ViewModelProviders;
 
-import com.android.car.media.common.MetadataController;
+import com.android.car.apps.common.BackgroundImageView;
 import com.android.car.media.common.playback.PlaybackViewModel;
 import com.android.car.media.common.source.MediaSourceViewModel;
-
-import com.bumptech.glide.request.target.Target;
 
 /**
  * Displays information on the current media item selected.
@@ -56,39 +54,42 @@ public class MusicFragment extends Fragment {
 
         MusicFragmentViewModel innerViewModel = ViewModelProviders.of(activity).get(
                 MusicFragmentViewModel.class);
-        innerViewModel.init(mMediaSourceViewModel);
+        innerViewModel.init(mMediaSourceViewModel, playbackViewModel);
 
         View view = inflater.inflate(R.layout.fragment_music, container, false);
 
         TextView appName = view.findViewById(R.id.app_name);
         innerViewModel.getAppName().observe(getViewLifecycleOwner(), appName::setText);
 
-        ImageView appIcon = view.findViewById(R.id.app_icon);
-        innerViewModel.getAppIcon().observe(getViewLifecycleOwner(), appIcon::setImageBitmap);
-
         TextView title = view.findViewById(R.id.title);
+        innerViewModel.getTitle().observe(getViewLifecycleOwner(), title::setText);
+
         TextView subtitle = view.findViewById(R.id.subtitle);
+        innerViewModel.getSubtitle().observe(getViewLifecycleOwner(), subtitle::setText);
+
         SeekBar seekBar = view.findViewById(R.id.seek_bar);
+        innerViewModel.getMaxProgress().observe(getViewLifecycleOwner(),
+                maxProgress -> seekBar.setMax(maxProgress != null ? maxProgress.intValue() : 0));
+        innerViewModel.getProgress().observe(getViewLifecycleOwner(),
+                progress -> seekBar.setProgress((int) progress.getProgress()));
+        innerViewModel.hasTime().observe(getViewLifecycleOwner(),
+                hasTime -> seekBar.setVisibility(hasTime ? View.VISIBLE : View.INVISIBLE));
+
         TextView time = view.findViewById(R.id.time);
-        TextView timeSeparator = view.findViewById(R.id.time_separator);
-        TextView trackLength = view.findViewById(R.id.track_length);
 
+        innerViewModel.getTimeText().observe(getViewLifecycleOwner(),
+                timeText -> time.setText(timeText));
+
+        BackgroundImageView albumBackground = view.findViewById(R.id.album_background);
         ImageView albumIcon = view.findViewById(R.id.album_art);
-
-        new MetadataController(
-            getViewLifecycleOwner(),
-            playbackViewModel,
-            title,
-            subtitle,
-            null,
-            null,
-            time,
-            timeSeparator,
-            trackLength,
-            seekBar,
-            albumIcon,
-            Target.SIZE_ORIGINAL
-        );
+        innerViewModel.getAlbumArt().observe(getViewLifecycleOwner(), albumArt -> {
+            albumBackground.setBackgroundImage(albumArt, true);
+            if (albumArt == null) {
+                albumIcon.setImageDrawable(getContext().getDrawable(R.drawable.ic_person));
+            } else {
+                albumIcon.setImageBitmap(albumArt);
+            }
+        });
 
         return view;
     }
