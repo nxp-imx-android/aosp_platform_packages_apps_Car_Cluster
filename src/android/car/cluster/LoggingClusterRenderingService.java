@@ -23,17 +23,15 @@ import android.os.Bundle;
 import android.os.UserHandle;
 import android.util.Log;
 
-import androidx.car.cluster.navigation.NavigationState;
-import androidx.versionedparcelable.ParcelUtils;
-
 import com.google.android.collect.Lists;
+import com.google.protobuf.InvalidProtocolBufferException;
 
 /**
  * Dummy implementation of {@link LoggingClusterRenderingService} to log all interaction.
  */
 public class LoggingClusterRenderingService extends InstrumentClusterRenderingService {
     private static final String TAG = LoggingClusterRenderingService.class.getSimpleName();
-    private static final String NAV_STATE_BUNDLE_KEY = "navstate";
+    private static final String NAV_STATE_PROTO_BUNDLE_KEY = "navstate2";
     private static final int NAV_STATE_EVENT_ID = 1;
 
     @Override
@@ -53,15 +51,27 @@ public class LoggingClusterRenderingService extends InstrumentClusterRenderingSe
             public void onEvent(int eventType, Bundle bundle) {
                 StringBuilder bundleSummary = new StringBuilder();
                 if (eventType == NAV_STATE_EVENT_ID) {
-                    bundle.setClassLoader(ParcelUtils.class.getClassLoader());
-                    NavigationState navState = NavigationState
-                            .fromParcelable(bundle.getParcelable(NAV_STATE_BUNDLE_KEY));
-                    bundleSummary.append(navState.toString());
+                    // Attempt to read proto byte array
+                    byte[] protoBytes = bundle.getByteArray(NAV_STATE_PROTO_BUNDLE_KEY);
+                    if (protoBytes != null) {
+                        try {
+                            android.car.cluster.navigation.NavigationState.NavigationStateProto
+                                    navState =
+                                    android.car.cluster.navigation.NavigationState.NavigationStateProto.parseFrom(
+                                            protoBytes);
+                            bundleSummary.append(navState.toString());
 
-                    // Sending broadcast for testing.
-                    Intent intent = new Intent("android.car.cluster.NAVIGATION_STATE_UPDATE");
-                    intent.putExtra(NAV_STATE_BUNDLE_KEY, bundle);
-                    sendBroadcastAsUser(intent, UserHandle.ALL);
+                            // Sending broadcast for testing.
+                            Intent intent = new Intent(
+                                    "android.car.cluster.NAVIGATION_STATE_UPDATE");
+                            intent.putExtra(NAV_STATE_PROTO_BUNDLE_KEY, bundle);
+                            sendBroadcastAsUser(intent, UserHandle.ALL);
+                        } catch (InvalidProtocolBufferException e) {
+                            Log.e(TAG, "Error parsing navigation state proto", e);
+                        }
+                    } else {
+                        Log.e(TAG, "Received nav state byte array is null");
+                    }
                 } else {
                     for (String key : bundle.keySet()) {
                         bundleSummary.append(key);
