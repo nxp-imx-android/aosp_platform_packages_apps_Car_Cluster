@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package android.car.cluster.sample.sensors;
+package android.car.cluster.sensors;
 
 import android.car.VehiclePropertyType;
 import android.car.hardware.CarPropertyValue;
@@ -22,7 +22,7 @@ import java.util.function.Function;
 
 /**
  * Description of a car sensor. It can be used as identifier at
- * {@link android.car.cluster.sample.ClusterViewModel#getSensor(Sensor)} to obtain a
+ * {@link android.car.cluster.ClusterViewModel#getSensor(Sensor)} to obtain a
  * {@link androidx.lifecycle.LiveData} to track values of this sensor. The sensor description is
  * used to process and decode the information reported by the car.
  * <p>
