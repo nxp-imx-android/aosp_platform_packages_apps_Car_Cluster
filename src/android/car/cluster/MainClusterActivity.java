@@ -25,7 +25,7 @@ import android.app.ActivityOptions;
 import android.car.Car;
 import android.car.cluster.CarInstrumentClusterManager;
 import android.car.cluster.ClusterActivityState;
-import android.car.cluster.sample.sensors.Sensors;
+import android.car.cluster.sensors.Sensors;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;

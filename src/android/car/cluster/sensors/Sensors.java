@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package android.car.cluster.sample.sensors;
+package android.car.cluster.sensors;
 
 import android.car.VehiclePropertyIds;
 import android.car.VehiclePropertyType;
