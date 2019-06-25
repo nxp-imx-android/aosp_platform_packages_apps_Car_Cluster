@@ -63,9 +63,7 @@
                 android:id="@+id/eta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_gravity="center"
                 android:layout_marginRight="@dimen/eta_margin_right"
-                android:maxLines="1"
                 android:textSize="@dimen/eta_text_size"/>
 
             <TextView
