@@ -247,7 +247,7 @@ public class ClusterViewModel extends AndroidViewModel {
             if (fuelValue > fuelCapacityValue) {
                 return 100;
             }
-            return Math.round(fuelValue / (fuelCapacityValue * 100f));
+            return Math.round(fuelValue / fuelCapacityValue * 100f);
         });
     }
 
