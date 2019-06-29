@@ -21,7 +21,8 @@ import static java.lang.Integer.parseInt;
 
 import android.app.ActivityOptions;
 import android.car.CarNotConnectedException;
-import android.car.cluster.navigation.NavigationState.NavigationStateProto;
+import android.car.cluster.CarInstrumentClusterManager;
+import android.car.cluster.ClusterActivityState;
 import android.car.cluster.renderer.InstrumentClusterRenderingService;
 import android.car.cluster.renderer.NavigationRenderer;
 import android.car.navigation.CarNavigationInstrumentCluster;
@@ -40,7 +41,8 @@ import android.view.Display;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 
-import com.google.protobuf.InvalidProtocolBufferException;
+import androidx.car.cluster.navigation.NavigationState;
+import androidx.versionedparcelable.ParcelUtils;
 
 import java.io.FileDescriptor;
 import java.io.PrintWriter;
@@ -61,7 +63,7 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
 
     static final int NAV_STATE_EVENT_ID = 1;
     static final String LOCAL_BINDING_ACTION = "local";
-    static final String NAV_STATE_PROTO_BUNDLE_KEY = "navstate2";
+    static final String NAV_STATE_BUNDLE_KEY = "navstate";
 
     private List<ServiceClient> mClients = new ArrayList<>();
     private ClusterDisplayProvider mDisplayProvider;
@@ -71,8 +73,7 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
 
     public interface ServiceClient {
         void onKeyEvent(KeyEvent keyEvent);
-
-        void onNavigationStateChange(NavigationStateProto navState);
+        void onNavigationStateChange(NavigationState navState);
     }
 
     public class LocalBinder extends Binder {
@@ -189,34 +190,30 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
 
             @Override
             public void onEvent(int eventType, Bundle bundle) {
-                StringBuilder bundleSummary = new StringBuilder();
-                if (eventType == NAV_STATE_EVENT_ID) {
-                    // Attempt to read proto byte array
-                    byte[] protoBytes = bundle.getByteArray(NAV_STATE_PROTO_BUNDLE_KEY);
-                    if (protoBytes != null) {
-                        try {
-                            NavigationStateProto navState = NavigationStateProto.parseFrom(
-                                    protoBytes);
-                            bundleSummary.append(navState.toString());
+                try {
+                    StringBuilder bundleSummary = new StringBuilder();
+                    if (eventType == NAV_STATE_EVENT_ID) {
+                        bundle.setClassLoader(ParcelUtils.class.getClassLoader());
+                        NavigationState navState = NavigationState
+                                .fromParcelable(bundle.getParcelable(NAV_STATE_BUNDLE_KEY));
+                        bundleSummary.append(navState.toString());
 
-                            // Update clients
-                            broadcastClientEvent(
-                                    client -> client.onNavigationStateChange(navState));
-                        } catch (InvalidProtocolBufferException e) {
-                            Log.e(TAG, "Error parsing navigation state proto", e);
-                        }
+                        // Update clients
+                        broadcastClientEvent(client -> client.onNavigationStateChange(navState));
                     } else {
-                        Log.e(TAG, "Received nav state byte array is null");
+                        for (String key : bundle.keySet()) {
+                            bundleSummary.append(key);
+                            bundleSummary.append("=");
+                            bundleSummary.append(bundle.get(key));
+                            bundleSummary.append(" ");
+                        }
                     }
-                } else {
-                    for (String key : bundle.keySet()) {
-                        bundleSummary.append(key);
-                        bundleSummary.append("=");
-                        bundleSummary.append(bundle.get(key));
-                        bundleSummary.append(" ");
-                    }
+                    Log.d(TAG, "onEvent(" + eventType + ", " + bundleSummary + ")");
+                } catch (Exception e) {
+                    Log.e(TAG, "Error parsing event data (" + eventType + ", " + bundle + ")", e);
+                    NavigationState navState = new NavigationState.Builder().build();
+                    broadcastClientEvent(client -> client.onNavigationStateChange(navState));
                 }
-                Log.d(TAG, "onEvent(" + eventType + ", " + bundleSummary + ")");
             }
         };
 
@@ -254,17 +251,17 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
             scanCode = 106;
         }
         return KeyEvent.obtain(
-                downTime,
-                eventTime,
-                action,
-                keyCode,
-                0 /* repeat */,
-                0 /* meta state */,
-                0 /* deviceId*/,
-                scanCode /* scancode */,
-                KeyEvent.FLAG_FROM_SYSTEM /* flags */,
-                InputDevice.SOURCE_KEYBOARD,
-                null /* characters */);
+                    downTime,
+                    eventTime,
+                    action,
+                    keyCode,
+                    0 /* repeat */,
+                    0 /* meta state */,
+                    0 /* deviceId*/,
+                    scanCode /* scancode */,
+                    KeyEvent.FLAG_FROM_SYSTEM /* flags */,
+                    InputDevice.SOURCE_KEYBOARD,
+                    null /* characters */);
     }
 
     private void execShellCommand(String[] args) {

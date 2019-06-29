@@ -25,9 +25,9 @@ import android.util.AttributeSet;
 import android.util.Log;
 import android.widget.TextView;
 
-import android.car.cluster.navigation.NavigationState.ImageReference;
-import android.car.cluster.navigation.NavigationState.Cue;
-import android.car.cluster.navigation.NavigationState.Cue.CueElement;
+import androidx.car.cluster.navigation.ImageReference;
+import androidx.car.cluster.navigation.RichText;
+import androidx.car.cluster.navigation.RichTextElement;
 
 import java.util.Collections;
 import java.util.List;
@@ -45,7 +45,7 @@ public class CueView extends TextView {
     private String mImageSpanText;
     private CompletableFuture<?> mFuture;
     private Handler mHandler = new Handler();
-    private Cue mContent;
+    private RichText mContent;
 
     public CueView(Context context) {
         super(context);
@@ -66,41 +66,41 @@ public class CueView extends TextView {
         mImageSpanText = context.getString(R.string.span_image);
     }
 
-    public void setCue(Cue cue, ImageResolver imageResolver) {
-        if (cue == null) {
+    public void setRichText(RichText richText, ImageResolver imageResolver) {
+        if (richText == null) {
             setText(null);
             return;
         }
 
-        if (mFuture != null && !Objects.equals(cue, mContent)) {
+        if (mFuture != null && !Objects.equals(richText, mContent)) {
             mFuture.cancel(true);
         }
 
-        List<ImageReference> imageReferences = cue.getElementsList().stream()
-                .filter(element -> element.hasImage())
+        List<ImageReference> imageReferences = richText.getElements().stream()
+                .filter(element -> element.getImage() != null)
                 .map(element -> element.getImage())
                 .collect(Collectors.toList());
         mFuture = imageResolver
                 .getBitmaps(imageReferences, 0, getLineHeight())
                 .thenAccept(bitmaps -> {
-                    mHandler.post(() -> update(cue, bitmaps));
+                    mHandler.post(() -> update(richText, bitmaps));
                     mFuture = null;
                 })
                 .exceptionally(ex -> {
                     if (Log.isLoggable(TAG, Log.DEBUG)) {
-                        Log.d(TAG, "Unable to fetch images for cue: " + cue);
+                        Log.d(TAG, "Unable to fetch images for cue: " + richText);
                     }
-                    mHandler.post(() -> update(cue, Collections.emptyMap()));
+                    mHandler.post(() -> update(richText, Collections.emptyMap()));
                     return null;
                 });
-        mContent = cue;
+        mContent = richText;
     }
 
-    private void update(Cue cue, Map<ImageReference, Bitmap> bitmaps) {
+    private void update(RichText richText, Map<ImageReference, Bitmap> bitmaps) {
         SpannableStringBuilder builder = new SpannableStringBuilder();
 
-        for (CueElement element : cue.getElementsList()) {
-            if (element.hasImage()) {
+        for (RichTextElement element : richText.getElements()) {
+            if (element.getImage() != null) {
                 Bitmap bitmap = bitmaps.get(element.getImage());
                 if (bitmap != null) {
                     String imageText = element.getText().isEmpty() ? mImageSpanText :

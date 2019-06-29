@@ -16,15 +16,6 @@
 package android.car.cluster;
 
 import android.annotation.Nullable;
-import android.car.cluster.navigation.NavigationState.Destination;
-import android.car.cluster.navigation.NavigationState.Destination.Traffic;
-import android.car.cluster.navigation.NavigationState.Distance;
-import android.car.cluster.navigation.NavigationState.ImageReference;
-import android.car.cluster.navigation.NavigationState.Maneuver;
-import android.car.cluster.navigation.NavigationState.NavigationStateProto;
-import android.car.cluster.navigation.NavigationState.Road;
-import android.car.cluster.navigation.NavigationState.Step;
-import android.car.cluster.navigation.NavigationState.Timestamp;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
@@ -33,7 +24,17 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import java.time.Instant;
+import androidx.car.cluster.navigation.Destination;
+import androidx.car.cluster.navigation.Destination.Traffic;
+import androidx.car.cluster.navigation.Distance;
+import androidx.car.cluster.navigation.ImageReference;
+import androidx.car.cluster.navigation.Maneuver;
+import androidx.car.cluster.navigation.NavigationState;
+import androidx.car.cluster.navigation.Segment;
+import androidx.car.cluster.navigation.Step;
+
+import java.time.Duration;
+import java.time.ZonedDateTime;
 
 /**
  * View controller for navigation state rendering.
@@ -80,42 +81,37 @@ public class NavStateController {
     /**
      * Updates views to reflect the provided navigation state
      */
-    public void update(@Nullable NavigationStateProto state) {
+    public void update(@Nullable NavigationState state) {
         if (Log.isLoggable(TAG, Log.DEBUG)) {
             Log.d(TAG, "Updating nav state: " + state);
         }
-        Step step = state != null && state.getStepsCount() > 0 ? state.getSteps(0) : null;
-        Destination destination = state != null && state.getDestinationsCount() > 0
-                ? state.getDestinations(0) : null;
+        Step step = state != null && state.getSteps().size() > 0 ? state.getSteps().get(0) : null;
+        Destination destination = state != null && !state.getDestinations().isEmpty()
+                ? state.getDestinations().get(0) : null;
+        ZonedDateTime eta = destination != null ? destination.getEta() : null;
         Traffic traffic = destination != null ? destination.getTraffic() : null;
-        String eta = destination != null
-                ? destination.getFormattedDurationUntilArrival().isEmpty()
-                    ? formatEta(destination.getEstimatedTimeAtArrival())
-                    : destination.getFormattedDurationUntilArrival()
-                : null;
-        mEta.setText(eta);
+
+        mEta.setText(eta != null ? formatEta(eta) : null);
         mEta.setTextColor(getTrafficColor(traffic));
         mManeuver.setImageDrawable(getManeuverIcon(step != null ? step.getManeuver() : null));
-        setProvidedManeuverIcon(mProvidedManeuver, step != null
-                ? step.getManeuver().hasIcon() ? step.getManeuver().getIcon() : null
-                : null);
+        setProvidedManeuverIcon(mProvidedManeuver,
+                step != null ? step.getManeuver().getIcon() : null);
         mDistance.setText(formatDistance(step != null ? step.getDistance() : null));
-        mSegment.setText(state != null ? getSegmentString(state.getCurrentRoad()) : null);
-        mCue.setCue(step != null ? step.getCue() : null, mImageResolver);
+        mSegment.setText(state != null ? getSegmentString(state.getCurrentSegment()) : null);
+        mCue.setRichText(step != null ? step.getCue() : null, mImageResolver);
 
-        if (step != null && step.getLanesCount() > 0) {
-            if (step.hasLanesImage()) {
-                mProvidedLane.setLanes(step.getLanesImage(), mImageResolver);
-                mProvidedLane.setVisibility(View.VISIBLE);
-            }
+        if (step != null && step.getLanes().size() > 0) {
+            mProvidedLane.setLanes(step.getLanesImage(), mImageResolver);
+            mProvidedLane.setVisibility(View.VISIBLE);
 
-            mLane.setLanes(step.getLanesList());
+            mLane.setLanes(step.getLanes());
             mLane.setVisibility(View.VISIBLE);
         } else {
             mLane.setVisibility(View.GONE);
             mProvidedLane.setVisibility(View.GONE);
         }
     }
+
 
     private int getTrafficColor(@Nullable Traffic traffic) {
         if (traffic == Traffic.LOW) {
@@ -129,12 +125,12 @@ public class NavStateController {
         return mContext.getColor(R.color.unknown_traffic);
     }
 
-    private String formatEta(@Nullable Timestamp eta) {
-        long seconds = eta.getSeconds() - Instant.now().getEpochSecond();
+    private String formatEta(@Nullable ZonedDateTime eta) {
+        ZonedDateTime now = ZonedDateTime.now();
+        Duration duration = Duration.between(now, eta);
+        long seconds = duration.getSeconds();
 
-        // Round up to the nearest minute
-        seconds = (long) Math.ceil(seconds / 60d) * 60;
-
+        // TODO: move formatting into common lib somewhere
         long minutes = (seconds / 60) % 60;
         long hours = (seconds / 3600) % 24;
         long days = seconds / (3600 * 24);
@@ -148,7 +144,7 @@ public class NavStateController {
         }
     }
 
-    private String getSegmentString(Road segment) {
+    private String getSegmentString(Segment segment) {
         if (segment != null) {
             return segment.getName();
         }
@@ -295,13 +291,13 @@ public class NavStateController {
     }
 
     private String formatDistance(@Nullable Distance distance) {
-        if (distance == null || distance.getDisplayUnits() == Distance.Unit.UNKNOWN) {
+        if (distance == null || distance.getDisplayUnit() == Distance.Unit.UNKNOWN) {
             return null;
         }
 
         String unit = "";
 
-        switch (distance.getDisplayUnits()) {
+        switch (distance.getDisplayUnit()) {
             case METERS:
                 unit = "m";
                 break;
