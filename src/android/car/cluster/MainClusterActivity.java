@@ -89,6 +89,11 @@ public class MainClusterActivity extends FragmentActivity implements
         ClusterRenderingService.ServiceClient {
     private static final String TAG = "Cluster.MainActivity";
 
+    private static final int NAV_FACET_ID = 0;
+    private static final int COMMS_FACET_ID = 1;
+    private static final int MEDIA_FACET_ID = 2;
+    private static final int INFO_FACET_ID = 3;
+
     private static final NavigationState NULL_NAV_STATE = new NavigationState.Builder().build();
     private static final int NO_DISPLAY = -1;
 
@@ -113,7 +118,7 @@ public class MainClusterActivity extends FragmentActivity implements
     private final Runnable mRetryLaunchNavigationActivity = this::tryLaunchNavigationActivity;
     private VirtualDisplay mNavigationDisplay = new VirtualDisplay(NO_DISPLAY, null);
 
-    private int mPreviousFacet;
+    private int mPreviousFacet = COMMS_FACET_ID;
 
     /**
      * Description of a virtual display
@@ -209,10 +214,14 @@ public class MainClusterActivity extends FragmentActivity implements
         intent.setAction(LOCAL_BINDING_ACTION);
         bindServiceAsUser(intent, mClusterRenderingServiceConnection, 0, UserHandle.SYSTEM);
 
-        registerFacet(new Facet<>(findViewById(R.id.btn_nav), 0, NavigationFragment.class));
-        registerFacet(new Facet<>(findViewById(R.id.btn_phone), 1, PhoneFragment.class));
-        registerFacet(new Facet<>(findViewById(R.id.btn_music), 2, MusicFragment.class));
-        registerFacet(new Facet<>(findViewById(R.id.btn_car_info), 3, CarInfoFragment.class));
+        registerFacet(new Facet<>(findViewById(R.id.btn_nav),
+                NAV_FACET_ID, NavigationFragment.class));
+        registerFacet(new Facet<>(findViewById(R.id.btn_phone),
+                COMMS_FACET_ID, PhoneFragment.class));
+        registerFacet(new Facet<>(findViewById(R.id.btn_music),
+                MEDIA_FACET_ID, MusicFragment.class));
+        registerFacet(new Facet<>(findViewById(R.id.btn_car_info),
+                INFO_FACET_ID, CarInfoFragment.class));
         registerGear(findViewById(R.id.gear_parked), Sensors.Gear.PARK);
         registerGear(findViewById(R.id.gear_reverse), Sensors.Gear.REVERSE);
         registerGear(findViewById(R.id.gear_neutral), Sensors.Gear.NEUTRAL);
@@ -220,7 +229,7 @@ public class MainClusterActivity extends FragmentActivity implements
 
         mPager = findViewById(R.id.pager);
         mPager.setAdapter(new ClusterPageAdapter(getSupportFragmentManager()));
-        mOrderToFacet.get(0).mButton.requestFocus();
+        mOrderToFacet.get(NAV_FACET_ID).mButton.requestFocus();
         mNavStateController = new NavStateController(findViewById(R.id.navigation_state));
 
         mClusterViewModel = ViewModelProviders.of(this).get(ClusterViewModel.class);
@@ -253,7 +262,7 @@ public class MainClusterActivity extends FragmentActivity implements
 
         mUserReceiver = new UserReceiver(this);
         mUserReceiver.register(this);
-        
+
         InMemoryPhoneBook.init(this);
 
         PhoneFragmentViewModel phoneViewModel = ViewModelProviders.of(this).get(
@@ -262,8 +271,10 @@ public class MainClusterActivity extends FragmentActivity implements
         phoneViewModel.setPhoneStateCallback(new PhoneFragmentViewModel.PhoneStateCallback() {
             @Override
             public void onCall() {
-                mPreviousFacet = mPager.getCurrentItem();
-                mOrderToFacet.get(1).mButton.requestFocus();
+                if (mPager.getCurrentItem() != COMMS_FACET_ID) {
+                    mPreviousFacet = mPager.getCurrentItem();
+                }
+                mOrderToFacet.get(COMMS_FACET_ID).mButton.requestFocus();
             }
 
             @Override
