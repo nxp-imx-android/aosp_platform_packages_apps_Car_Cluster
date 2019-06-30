@@ -23,8 +23,7 @@ import static android.content.PermissionChecker.PERMISSION_GRANTED;
 import android.app.ActivityManager;
 import android.app.ActivityOptions;
 import android.car.Car;
-import android.car.cluster.CarInstrumentClusterManager;
-import android.car.cluster.ClusterActivityState;
+import android.car.cluster.navigation.NavigationState.NavigationStateProto;
 import android.car.cluster.sensors.Sensors;
 import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
@@ -50,7 +49,6 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.TextView;
 
-import androidx.car.cluster.navigation.NavigationState;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
@@ -65,7 +63,6 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URISyntaxException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -94,7 +91,8 @@ public class MainClusterActivity extends FragmentActivity implements
     private static final int MEDIA_FACET_ID = 2;
     private static final int INFO_FACET_ID = 3;
 
-    private static final NavigationState NULL_NAV_STATE = new NavigationState.Builder().build();
+    private static final NavigationStateProto NULL_NAV_STATE =
+            NavigationStateProto.getDefaultInstance();
     private static final int NO_DISPLAY = -1;
 
     private ViewPager mPager;
@@ -315,7 +313,7 @@ public class MainClusterActivity extends FragmentActivity implements
     }
 
     @Override
-    public void onNavigationStateChange(NavigationState state) {
+    public void onNavigationStateChange(NavigationStateProto state) {
         Log.d(TAG, "onNavigationStateChange: " + state);
         if (mNavStateController != null) {
             mNavStateController.update(state);
