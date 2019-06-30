@@ -29,9 +29,9 @@ import android.util.Log;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 
-import androidx.car.cluster.navigation.ImageReference;
-import androidx.car.cluster.navigation.Lane;
-import androidx.car.cluster.navigation.LaneDirection;
+import android.car.cluster.navigation.NavigationState.ImageReference;
+import android.car.cluster.navigation.NavigationState.Lane;
+import android.car.cluster.navigation.NavigationState.Lane.LaneDirection;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -104,7 +104,7 @@ public class LaneView extends LinearLayout {
     }
 
     private Bitmap combineBitmapFromLane(Lane lane) {
-        if (lane.getDirections().isEmpty()) {
+        if (lane.getLaneDirectionsList().isEmpty()) {
             return null;
         }
 
@@ -113,14 +113,14 @@ public class LaneView extends LinearLayout {
 
         Shift shift = getShift(lane);
 
-        for (LaneDirection laneDir : lane.getDirections()) {
-            if (!laneDir.isHighlighted()) {
+        for (LaneDirection laneDir : lane.getLaneDirectionsList()) {
+            if (!laneDir.getIsHighlighted()) {
                 drawToCanvas(laneDir, canvas, false, shift);
             }
         }
 
-        for (LaneDirection laneDir : lane.getDirections()) {
-            if (laneDir.isHighlighted()) {
+        for (LaneDirection laneDir : lane.getLaneDirectionsList()) {
+            if (laneDir.getIsHighlighted()) {
                 drawToCanvas(laneDir, canvas, true, shift);
             }
         }
@@ -148,7 +148,7 @@ public class LaneView extends LinearLayout {
         boolean containsLeft = false;
         boolean containsStraight = false;
 
-        for (LaneDirection laneDir : lane.getDirections()) {
+        for (LaneDirection laneDir : lane.getLaneDirectionsList()) {
             if (laneDir.getShape().equals(LaneDirection.Shape.NORMAL_RIGHT)
                     || laneDir.getShape().equals(LaneDirection.Shape.SLIGHT_RIGHT)
                     || laneDir.getShape().equals(LaneDirection.Shape.SHARP_RIGHT)
