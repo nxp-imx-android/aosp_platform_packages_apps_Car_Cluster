@@ -13,7 +13,8 @@ LOCAL_JAVA_LIBRARIES := \
     robolectric_android-all-stub \
     Robolectric_all-target \
     mockito-robolectric-prebuilt \
-    truth-prebuilt
+    truth-prebuilt \
+    android.car
 
 LOCAL_INSTRUMENTATION_FOR := DirectRenderingCluster
 
@@ -35,7 +36,8 @@ LOCAL_JAVA_LIBRARIES := \
     robolectric_android-all-stub \
     Robolectric_all-target \
     mockito-robolectric-prebuilt \
-    truth-prebuilt
+    truth-prebuilt \
+    android.car
 
 LOCAL_TEST_PACKAGE := DirectRenderingCluster
 

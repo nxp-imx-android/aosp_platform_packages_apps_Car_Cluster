@@ -103,5 +103,5 @@
     <dimen name="user_profile_title_padding_top">@*android:dimen/car_padding_3</dimen>
     <dimen name="user_profile_body_padding_top">@*android:dimen/car_padding_3</dimen>
 
-    <dimen name="large_avatar_icon_size">@dimen/car_large_avatar_size</dimen>
+    <dimen name="large_avatar_icon_size">96dp</dimen>
 </resources>
