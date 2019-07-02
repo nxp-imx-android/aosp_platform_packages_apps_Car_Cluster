@@ -40,8 +40,6 @@ import android.view.Display;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 
-import androidx.versionedparcelable.ParcelUtils;
-
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import java.io.FileDescriptor;
@@ -190,39 +188,27 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
             }
 
             @Override
-            public void onEvent(int eventType, Bundle bundle) {
+            public void onNavigationStateChanged(Bundle bundle) {
                 StringBuilder bundleSummary = new StringBuilder();
-                if (eventType == NAV_STATE_EVENT_ID) {
-                    // Required to prevent backwards compatibility crash with old map providers
-                    // sending androidx.versionedparcelables
-                    bundle.setClassLoader(ParcelUtils.class.getClassLoader());
-                    
-                    // Attempt to read proto byte array
-                    byte[] protoBytes = bundle.getByteArray(NAV_STATE_PROTO_BUNDLE_KEY);
-                    if (protoBytes != null) {
-                        try {
-                            NavigationStateProto navState = NavigationStateProto.parseFrom(
-                                    protoBytes);
-                            bundleSummary.append(navState.toString());
 
-                            // Update clients
-                            broadcastClientEvent(
-                                    client -> client.onNavigationStateChange(navState));
-                        } catch (InvalidProtocolBufferException e) {
-                            Log.e(TAG, "Error parsing navigation state proto", e);
-                        }
-                    } else {
-                        Log.e(TAG, "Received nav state byte array is null");
+                // Attempt to read proto byte array
+                byte[] protoBytes = bundle.getByteArray(NAV_STATE_PROTO_BUNDLE_KEY);
+                if (protoBytes != null) {
+                    try {
+                        NavigationStateProto navState = NavigationStateProto.parseFrom(
+                                protoBytes);
+                        bundleSummary.append(navState.toString());
+
+                        // Update clients
+                        broadcastClientEvent(
+                                client -> client.onNavigationStateChange(navState));
+                    } catch (InvalidProtocolBufferException e) {
+                        Log.e(TAG, "Error parsing navigation state proto", e);
                     }
                 } else {
-                    for (String key : bundle.keySet()) {
-                        bundleSummary.append(key);
-                        bundleSummary.append("=");
-                        bundleSummary.append(bundle.get(key));
-                        bundleSummary.append(" ");
-                    }
+                    Log.e(TAG, "Received nav state byte array is null");
                 }
-                Log.d(TAG, "onEvent(" + eventType + ", " + bundleSummary + ")");
+                Log.d(TAG, "onNavigationStateChanged(" + bundleSummary + ")");
             }
         };
 
