@@ -18,7 +18,6 @@ package android.car.cluster;
 import android.annotation.NonNull;
 import android.annotation.Nullable;
 import android.car.cluster.navigation.NavigationState.ImageReference;
-import android.car.cluster.renderer.InvalidSizeException;
 import android.graphics.Bitmap;
 import android.graphics.Point;
 import android.net.Uri;
@@ -45,7 +44,7 @@ public class ImageResolver {
         /**
          * Returns a {@link Bitmap} given a request Uri and dimensions
          */
-        Bitmap getBitmap(Uri uri, int width, int height) throws InvalidSizeException;
+        Bitmap getBitmap(Uri uri, int width, int height) throws IllegalArgumentException;
     }
 
     /**
@@ -82,7 +81,7 @@ public class ImageResolver {
             Bitmap bitmap = null;
             try {
                 bitmap = mFetcher.getBitmap(uri, adjusted.x, adjusted.y);
-            } catch (InvalidSizeException e) {
+            } catch (IllegalArgumentException e) {
                 Log.e(TAG, "Bitmap must have positive width and height");
             }
             if (bitmap == null) {
