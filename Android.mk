@@ -36,7 +36,8 @@ LOCAL_USE_AAPT2 := true
 LOCAL_RESOURCE_DIR := $(LOCAL_PATH)/res
 
 LOCAL_STATIC_JAVA_LIBRARIES := \
-    android.car.cluster.navigation
+    android.car.cluster.navigation \
+    androidx.car_car-cluster
 
 LOCAL_JAVA_LIBRARIES += android.car
 LOCAL_STATIC_ANDROID_LIBRARIES += \
