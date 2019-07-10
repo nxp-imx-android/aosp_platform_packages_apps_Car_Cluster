@@ -380,7 +380,7 @@ public class NetworkedVirtualDisplay {
                 }
                 return new PipeThread(mHandler, pipe);
             } catch (IOException e) {
-                Log.e(TAG, "Failed to establish pipe connection", e);
+                Log.w(TAG, "Failed to establish pipe connection", e);
                 return null;
             }
         }
@@ -401,7 +401,7 @@ public class NetworkedVirtualDisplay {
 
                 return new SocketThread(mHandler, serverSocket, inputStream, outputStream);
             } catch (IOException e) {
-                Log.e(TAG, "Failed to establish network connection", e);
+                Log.w(TAG, "Failed to establish network connection", e);
                 return null;
             }
         }
