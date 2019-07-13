@@ -277,7 +277,9 @@ public class MainClusterActivity extends FragmentActivity implements
 
             @Override
             public void onDisconnect() {
-                mOrderToFacet.get(mPreviousFacet).mButton.requestFocus();
+                if (mPreviousFacet != COMMS_FACET_ID) {
+                    mOrderToFacet.get(mPreviousFacet).mButton.requestFocus();
+                }
             }
         });
     }
