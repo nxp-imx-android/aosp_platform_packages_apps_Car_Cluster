@@ -41,14 +41,17 @@ public final class PhoneFragmentViewModel extends AndroidViewModel {
     private LiveData<ContactInfo> mContactInfo;
 
     private PhoneStateCallback mCallback;
+    private ClusterPhoneStateListener mPhoneStateListener = new ClusterPhoneStateListener();
 
     public PhoneFragmentViewModel(Application application) {
         super(application);
 
         TelephonyManager telephonyManager = (TelephonyManager) application.getSystemService(
                 Context.TELEPHONY_SERVICE);
-        telephonyManager.listen(new ClusterPhoneStateListener(),
-                PhoneStateListener.LISTEN_CALL_STATE);
+
+        // We have to keep a reference to the PhoneCallStateListener around to prevent it from being
+        // garbage-collected.
+        telephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
 
         mBody = new SelfRefreshDescriptionLiveData(getApplication(), mState, mNumber, mConnectTime);
 
