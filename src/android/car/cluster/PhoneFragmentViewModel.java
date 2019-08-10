@@ -28,7 +28,7 @@ import androidx.lifecycle.MutableLiveData;
 
 import com.android.car.telephony.common.Contact;
 import com.android.car.telephony.common.InMemoryPhoneBook;
-import com.android.car.telephony.common.TelecomUtils;
+import com.android.car.telephony.common.TelecomUtils.PhoneNumberInfo;
 
 /**
  * View model for {@link PhoneFragment}
@@ -49,15 +49,16 @@ public final class PhoneFragmentViewModel extends AndroidViewModel {
         TelephonyManager telephonyManager = (TelephonyManager) application.getSystemService(
                 Context.TELEPHONY_SERVICE);
 
-        // We have to keep a reference to the PhoneCallStateListener around to prevent it from being
+        // We have to keep a reference to the PhoneStateListener around to prevent it from being
         // garbage-collected.
         telephonyManager.listen(mPhoneStateListener, PhoneStateListener.LISTEN_CALL_STATE);
 
-        mBody = new SelfRefreshDescriptionLiveData(getApplication(), mState, mNumber, mConnectTime);
+        LiveData<PhoneNumberInfo> numberInfo = new PhoneNumberInfoLiveData(
+                getApplication(), mNumber);
+        mBody = new SelfRefreshDescriptionLiveData(
+                getApplication(), mState, numberInfo, mConnectTime);
 
-        mContactInfo = map(mNumber, (number) -> {
-            return new ContactInfo(number);
-        });
+        mContactInfo = map(numberInfo, ContactInfo::new);
     }
 
     public interface PhoneStateCallback {
@@ -118,10 +119,10 @@ public final class PhoneFragmentViewModel extends AndroidViewModel {
         private String mDisplayName;
         private Contact mContact;
 
-        public ContactInfo(String number) {
-            mNumber = number;
-            mDisplayName = TelecomUtils.getDisplayNameAndAvatarUri(getApplication(), number).first;
-            mContact = InMemoryPhoneBook.get().lookupContactEntry(number);
+        public ContactInfo(PhoneNumberInfo info) {
+            mNumber = info.getPhoneNumber();
+            mDisplayName = info.getDisplayName();
+            mContact = InMemoryPhoneBook.get().lookupContactEntry(info.getPhoneNumber());
         }
 
         public String getNumber() {
