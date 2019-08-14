@@ -40,6 +40,8 @@ import android.view.Display;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 
+import androidx.versionedparcelable.ParcelUtils;
+
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import java.io.FileDescriptor;
@@ -191,6 +193,10 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
             public void onEvent(int eventType, Bundle bundle) {
                 StringBuilder bundleSummary = new StringBuilder();
                 if (eventType == NAV_STATE_EVENT_ID) {
+                    // Required to prevent backwards compatibility crash with old map providers
+                    // sending androidx.versionedparcelables
+                    bundle.setClassLoader(ParcelUtils.class.getClassLoader());
+                    
                     // Attempt to read proto byte array
                     byte[] protoBytes = bundle.getByteArray(NAV_STATE_PROTO_BUNDLE_KEY);
                     if (protoBytes != null) {
