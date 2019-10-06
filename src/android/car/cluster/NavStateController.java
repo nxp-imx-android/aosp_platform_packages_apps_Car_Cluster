@@ -31,6 +31,7 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import java.time.Instant;
@@ -42,6 +43,10 @@ public class NavStateController {
     private static final String TAG = "Cluster.NavController";
 
     private Handler mHandler = new Handler();
+
+    private LinearLayout mSectionManeuver;
+    private LinearLayout mSectionNavigation;
+    private LinearLayout mSectionServiceStatus;
 
     private ImageView mManeuver;
     private ImageView mProvidedManeuver;
@@ -61,6 +66,10 @@ public class NavStateController {
      * @param container {@link View} containing the navigation state views
      */
     public NavStateController(View container) {
+        mSectionManeuver = container.findViewById(R.id.section_maneuver);
+        mSectionNavigation = container.findViewById(R.id.section_navigation);
+        mSectionServiceStatus = container.findViewById(R.id.section_service_status);
+
         mManeuver = container.findViewById(R.id.maneuver);
         mProvidedManeuver = container.findViewById(R.id.provided_maneuver);
         mLane = container.findViewById(R.id.lane);
@@ -84,8 +93,24 @@ public class NavStateController {
         if (Log.isLoggable(TAG, Log.DEBUG)) {
             Log.d(TAG, "Updating nav state: " + state);
         }
-        Step step = state != null && state.getStepsCount() > 0 ? state.getSteps(0) : null;
-        Destination destination = state != null && state.getDestinationsCount() > 0
+
+        if (state == null) {
+            return;
+        }
+
+        if (state.getServiceStatus() == NavigationStateProto.ServiceStatus.REROUTING) {
+            mSectionManeuver.setVisibility(View.INVISIBLE);
+            mSectionNavigation.setVisibility(View.INVISIBLE);
+            mSectionServiceStatus.setVisibility(View.VISIBLE);
+            return;
+        } else {
+            mSectionManeuver.setVisibility(View.VISIBLE);
+            mSectionNavigation.setVisibility(View.VISIBLE);
+            mSectionServiceStatus.setVisibility(View.GONE);
+        }
+
+        Step step = state.getStepsCount() > 0 ? state.getSteps(0) : null;
+        Destination destination = state.getDestinationsCount() > 0
                 ? state.getDestinations(0) : null;
         Traffic traffic = destination != null ? destination.getTraffic() : null;
         String eta = destination != null
@@ -100,7 +125,7 @@ public class NavStateController {
                 ? step.getManeuver().hasIcon() ? step.getManeuver().getIcon() : null
                 : null);
         mDistance.setText(formatDistance(step != null ? step.getDistance() : null));
-        mSegment.setText(state != null ? getSegmentString(state.getCurrentRoad()) : null);
+        mSegment.setText(getSegmentString(state.getCurrentRoad()));
         mCue.setCue(step != null ? step.getCue() : null, mImageResolver);
 
         if (step != null && step.getLanesCount() > 0) {
