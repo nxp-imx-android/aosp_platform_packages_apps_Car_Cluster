@@ -25,6 +25,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.Display;
 import android.view.DisplayAddress;
+import android.os.Handler;
 
 /**
  * This class provides a display for instrument cluster renderer.
@@ -50,23 +51,43 @@ public class ClusterDisplayProvider {
 
     private NetworkedVirtualDisplay mNetworkedVirtualDisplay;
     private int mClusterDisplayId = -1;
+    private Handler mWaitHandler = new Handler();
 
     ClusterDisplayProvider(Context context, DisplayListener clusterDisplayListener) {
         mListener = clusterDisplayListener;
         mDisplayManager = context.getSystemService(DisplayManager.class);
 
-        Display clusterDisplay = getInstrumentClusterDisplay(mDisplayManager);
-        if (clusterDisplay != null) {
-            Log.i(TAG, String.format("Found display: %s (id: %d, owner: %s)",
-                    clusterDisplay.getName(), clusterDisplay.getDisplayId(),
-                    clusterDisplay.getOwnerPackageName()));
-            mClusterDisplayId = clusterDisplay.getDisplayId();
-            clusterDisplayListener.onDisplayAdded(clusterDisplay.getDisplayId());
-            trackClusterDisplay(null /* no need to track display by name */);
-        } else {
-            Log.i(TAG, "No physical cluster display found, starting network display");
-            setupNetworkDisplay(context);
+        DisplayListener mDisplayListener=new DisplayManager.DisplayListener(){
+            @Override
+            public void onDisplayAdded(int displayId){
+                if (mClusterDisplayId == -1) {
+                    Log.i(TAG,"onDisplayAdded displayId is " + displayId);
+                    Display clusterDisplay = getInstrumentClusterDisplay(mDisplayManager);
+                    if (clusterDisplay != null) {
+                        Log.i(TAG, String.format("Found display: %s (id: %d, owner: %s)",
+                                clusterDisplay.getName(), clusterDisplay.getDisplayId(),
+                                clusterDisplay.getOwnerPackageName()));
+                        mClusterDisplayId = clusterDisplay.getDisplayId();
+                        clusterDisplayListener.onDisplayAdded(clusterDisplay.getDisplayId());
+                        trackClusterDisplay(null /* no need to track display by name */);
+                    }
+                    else {
+                        Log.i(TAG, "No physical cluster display found, starting network display");
+                        setupNetworkDisplay(context);
+                    }
+                }
         }
+
+            @Override
+            public void onDisplayRemoved(int displayId){
+            }
+
+            @Override
+            public void onDisplayChanged(int displayId){
+            }
+       };
+
+       mDisplayManager.registerDisplayListener(mDisplayListener,mWaitHandler);
     }
 
     private void setupNetworkDisplay(Context context) {
