@@ -414,7 +414,7 @@ public class MainClusterActivity extends FragmentActivity implements
         }
         mHandler.removeCallbacks(mRetryLaunchNavigationActivity);
 
-        ComponentName navigationActivity = getNavigationActivity();
+        ComponentName navigationActivity = getNavigationActivity(this);
         mClusterViewModel.setFreeNavigationActivity(navigationActivity);
 
         try {
@@ -456,10 +456,10 @@ public class MainClusterActivity extends FragmentActivity implements
      * <li>Let the user select one from settings.
      * </ul>
      */
-    private ComponentName getNavigationActivity() {
-        PackageManager pm = getPackageManager();
+    static ComponentName getNavigationActivity(Context context) {
+        PackageManager pm = context.getPackageManager();
         int userId = ActivityManager.getCurrentUser();
-        String intentString = getString(R.string.freeNavigationIntent);
+        String intentString = context.getString(R.string.freeNavigationIntent);
 
         if (intentString == null) {
             Log.w(TAG, "No free navigation activity defined");

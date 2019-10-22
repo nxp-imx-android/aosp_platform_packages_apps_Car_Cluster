@@ -16,20 +16,25 @@
 package android.car.cluster;
 
 import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
+import static android.view.Display.INVALID_DISPLAY;
 
 import static java.lang.Integer.parseInt;
 
+import android.app.ActivityManager;
 import android.app.ActivityOptions;
 import android.car.CarNotConnectedException;
 import android.car.cluster.navigation.NavigationState.NavigationStateProto;
 import android.car.cluster.renderer.InstrumentClusterRenderingService;
 import android.car.cluster.renderer.NavigationRenderer;
 import android.car.navigation.CarNavigationInstrumentCluster;
+import android.content.ComponentName;
 import android.content.Intent;
 import android.graphics.Rect;
+import android.hardware.display.DisplayManager;
 import android.hardware.display.DisplayManager.DisplayListener;
 import android.os.Binder;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.IBinder;
 import android.os.SystemClock;
 import android.os.UserHandle;
@@ -41,6 +46,8 @@ import android.view.InputDevice;
 import android.view.KeyEvent;
 
 import androidx.versionedparcelable.ParcelUtils;
+
+import com.android.internal.annotations.GuardedBy;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -58,8 +65,7 @@ import java.util.function.Consumer;
 public class ClusterRenderingService extends InstrumentClusterRenderingService implements
         ImageResolver.BitmapFetcher {
     private static final String TAG = "Cluster.Service";
-
-    private static final int NO_DISPLAY = -1;
+    private static final int NAVIGATION_ACTIVITY_RETRY_INTERVAL_MS = 1000;
 
     static final int NAV_STATE_EVENT_ID = 1;
     static final String LOCAL_BINDING_ACTION = "local";
@@ -67,9 +73,15 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
 
     private List<ServiceClient> mClients = new ArrayList<>();
     private ClusterDisplayProvider mDisplayProvider;
-    private int mDisplayId = NO_DISPLAY;
+
+    private int mClusterDisplayId = INVALID_DISPLAY;
+
+    private boolean mInstrumentClusterHelperReady;
+
     private final IBinder mLocalBinder = new LocalBinder();
     private final ImageResolver mImageResolver = new ImageResolver(this);
+    private final Handler mHandler = new Handler();
+    private final Runnable mLaunchMainActivity = this::launchMainActivity;
 
     public interface ServiceClient {
         void onKeyEvent(KeyEvent keyEvent);
@@ -84,11 +96,15 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
     }
 
     private final DisplayListener mDisplayListener = new DisplayListener() {
+        // Called in the main thread, since ClusterDisplayProvider.DisplayListener was registered
+        // with null handler.
         @Override
         public void onDisplayAdded(int displayId) {
             Log.i(TAG, "Cluster display found, displayId: " + displayId);
-            mDisplayId = displayId;
-            launchMainActivity();
+            mClusterDisplayId = displayId;
+            if (mInstrumentClusterHelperReady) {
+                mHandler.post(mLaunchMainActivity);
+            }
         }
 
         @Override
@@ -104,7 +120,7 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
 
     public void setActivityLaunchOptions(int displayId, ClusterActivityState state) {
         try {
-            ActivityOptions options = displayId != Display.INVALID_DISPLAY
+            ActivityOptions options = displayId != INVALID_DISPLAY
                     ? ActivityOptions.makeBasic().setLaunchDisplayId(displayId)
                     : null;
             setClusterActivityLaunchOptions(CarInstrumentClusterManager.CATEGORY_NAVIGATION,
@@ -138,9 +154,15 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
     @Override
     public IBinder onBind(Intent intent) {
         Log.d(TAG, "onBind, intent: " + intent);
-        return LOCAL_BINDING_ACTION.equals(intent.getAction())
-                ? mLocalBinder
-                : super.onBind(intent);
+        if (LOCAL_BINDING_ACTION.equals(intent.getAction())) {
+            return mLocalBinder;
+        }
+        IBinder binder = super.onBind(intent);
+        mInstrumentClusterHelperReady = true;
+        if (mClusterDisplayId != INVALID_DISPLAY) {
+            mHandler.post(mLaunchMainActivity);
+        }
+        return binder;
     }
 
     @Override
@@ -151,12 +173,50 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
     }
 
     private void launchMainActivity() {
+        mHandler.removeCallbacks(mLaunchMainActivity);
         ActivityOptions options = ActivityOptions.makeBasic();
-        options.setLaunchDisplayId(mDisplayId);
-        Intent intent = new Intent(this, MainClusterActivity.class);
-        intent.setFlags(FLAG_ACTIVITY_NEW_TASK);
-        startActivityAsUser(intent, options.toBundle(), UserHandle.SYSTEM);
-        Log.i(TAG, String.format("launching main activity: %s (display: %d)", intent, mDisplayId));
+        options.setLaunchDisplayId(mClusterDisplayId);
+        boolean useNavigationOnly = getResources().getBoolean(R.bool.navigationOnly);
+        Intent intent;
+        int userId = UserHandle.USER_SYSTEM;
+        if (useNavigationOnly) {
+            intent = getNavigationActivityIntent(mClusterDisplayId);
+            if (intent == null) {
+                mHandler.postDelayed(mLaunchMainActivity, NAVIGATION_ACTIVITY_RETRY_INTERVAL_MS);
+                return;
+            }
+            userId = ActivityManager.getCurrentUser();
+            startFixedActivityModeForDisplayAndUser(intent, options, userId);
+        } else {
+            intent = getMainClusterActivityIntent();
+            startActivityAsUser(intent, options.toBundle(), UserHandle.SYSTEM);
+        }
+        Log.i(TAG, "launching main activity=" + intent + ", display=" + mClusterDisplayId
+                + ", userId=" + userId);
+    }
+
+    private Intent getMainClusterActivityIntent() {
+        return new Intent(this, MainClusterActivity.class).setFlags(FLAG_ACTIVITY_NEW_TASK);
+    }
+
+    private Intent getNavigationActivityIntent(int displayId) {
+        ComponentName component = MainClusterActivity.getNavigationActivity(this);
+        if (component == null) {
+            Log.e(TAG, "Failed to resolve the navigation activity");
+            return null;
+        }
+        Rect displaySize = new Rect(0, 0, 320, 240);  // Arbitrary size, better than nothing.
+        DisplayManager dm = (DisplayManager) getSystemService(DisplayManager.class);
+        Display display = dm.getDisplay(displayId);
+        if (display != null) {
+            display.getRectSize(displaySize);
+        }
+        return new Intent(Intent.ACTION_MAIN)
+            .setComponent(component)
+            .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            .putExtra(CarInstrumentClusterManager.KEY_EXTRA_ACTIVITY_STATE,
+                ClusterActivityState.create(/* visible= */ true,
+                    /* unobscuredBounds= */ displaySize).toBundle());
     }
 
     @Override
