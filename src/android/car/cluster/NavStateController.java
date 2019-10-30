@@ -240,6 +240,8 @@ public class NavStateController {
                 return mContext.getDrawable(R.drawable.direction_merge_left);
             case MERGE_RIGHT:
                 return mContext.getDrawable(R.drawable.direction_merge_right);
+            case MERGE_SIDE_UNSPECIFIED:
+                return mContext.getDrawable(R.drawable.direction_merge_unspecified);
             case ROUNDABOUT_ENTER:
                 return mContext.getDrawable(R.drawable.direction_roundabout);
             case ROUNDABOUT_EXIT:
