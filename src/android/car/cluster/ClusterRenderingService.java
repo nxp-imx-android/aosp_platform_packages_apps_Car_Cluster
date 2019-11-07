@@ -15,6 +15,8 @@
  */
 package android.car.cluster;
 
+import static android.content.Intent.ACTION_USER_SWITCHED;
+import static android.content.Intent.ACTION_USER_UNLOCKED;
 import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
 import static android.view.Display.INVALID_DISPLAY;
 
@@ -27,8 +29,11 @@ import android.car.cluster.navigation.NavigationState.NavigationStateProto;
 import android.car.cluster.renderer.InstrumentClusterRenderingService;
 import android.car.cluster.renderer.NavigationRenderer;
 import android.car.navigation.CarNavigationInstrumentCluster;
+import android.content.BroadcastReceiver;
 import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.graphics.Rect;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.DisplayManager.DisplayListener;
@@ -46,8 +51,6 @@ import android.view.InputDevice;
 import android.view.KeyEvent;
 
 import androidx.versionedparcelable.ParcelUtils;
-
-import com.android.internal.annotations.GuardedBy;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 
@@ -82,6 +85,8 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
     private final ImageResolver mImageResolver = new ImageResolver(this);
     private final Handler mHandler = new Handler();
     private final Runnable mLaunchMainActivity = this::launchMainActivity;
+
+    private final UserReceiver mUserReceiver = new UserReceiver();
 
     public interface ServiceClient {
         void onKeyEvent(KeyEvent keyEvent);
@@ -170,6 +175,13 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
         super.onCreate();
         Log.d(TAG, "onCreate");
         mDisplayProvider = new ClusterDisplayProvider(this, mDisplayListener);
+
+        mUserReceiver.register(this);
+    }
+
+    public void onDestroy() {
+        super.onDestroy();
+        mUserReceiver.unregister(this);
     }
 
     private void launchMainActivity() {
@@ -377,6 +389,26 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
                     Log.i(TAG, "wrong format, expected: category left top right bottom");
                 }
             }
+        }
+    }
+
+    private class UserReceiver extends BroadcastReceiver {
+        void register(Context context) {
+            IntentFilter intentFilter = new IntentFilter(ACTION_USER_UNLOCKED);
+            intentFilter.addAction(ACTION_USER_SWITCHED);
+            context.registerReceiver(this, intentFilter);
+        }
+
+        void unregister(Context context) {
+            context.unregisterReceiver(this);
+        }
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (Log.isLoggable(TAG, Log.DEBUG)) {
+                Log.d(TAG, "Broadcast received: " + intent);
+            }
+            mHandler.post(mLaunchMainActivity);
         }
     }
 }
