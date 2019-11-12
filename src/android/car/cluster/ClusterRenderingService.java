@@ -395,8 +395,7 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
     private class UserReceiver extends BroadcastReceiver {
         void register(Context context) {
             IntentFilter intentFilter = new IntentFilter(ACTION_USER_UNLOCKED);
-            intentFilter.addAction(ACTION_USER_SWITCHED);
-            context.registerReceiver(this, intentFilter);
+            context.registerReceiverAsUser(this, UserHandle.ALL, intentFilter, null, null);
         }
 
         void unregister(Context context) {
@@ -408,7 +407,11 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
             if (Log.isLoggable(TAG, Log.DEBUG)) {
                 Log.d(TAG, "Broadcast received: " + intent);
             }
-            mHandler.post(mLaunchMainActivity);
+            int userId = intent.getIntExtra(Intent.EXTRA_USER_HANDLE, UserHandle.USER_NULL);
+            if (userId == ActivityManager.getCurrentUser() &&
+                mInstrumentClusterHelperReady && mClusterDisplayId != INVALID_DISPLAY) {
+                mHandler.post(mLaunchMainActivity);
+            }
         }
     }
 }
