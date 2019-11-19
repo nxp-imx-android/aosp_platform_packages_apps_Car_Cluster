@@ -49,7 +49,7 @@ public class ImageResolver {
         /**
          * Returns a {@link Bitmap} given a request Uri, dimensions, and offLanesAlpha value
          */
-        Bitmap getBitmap(Uri uri, int width, int height) throws IllegalArgumentException;
+        Bitmap getBitmap(Uri uri, int width, int height, float offLanesAlpha) throws IllegalArgumentException;
     }
 
     /**
