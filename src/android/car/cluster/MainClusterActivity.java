@@ -110,7 +110,6 @@ public class MainClusterActivity extends FragmentActivity implements
     private static final int NAVIGATION_ACTIVITY_RETRY_INTERVAL_MS = 1000;
     private static final int NAVIGATION_ACTIVITY_RELAUNCH_DELAY_MS = 5000;
 
-    private UserReceiver mUserReceiver;
     private ActivityMonitor mActivityMonitor = new ActivityMonitor();
     private final Handler mHandler = new Handler();
     private final Runnable mRetryLaunchNavigationActivity = this::tryLaunchNavigationActivity;
@@ -173,33 +172,6 @@ public class MainClusterActivity extends FragmentActivity implements
         mClusterViewModel.setCurrentNavigationActivity(activity);
     };
 
-    private static class UserReceiver extends BroadcastReceiver {
-        private WeakReference<MainClusterActivity> mActivity;
-
-        UserReceiver(MainClusterActivity activity) {
-            mActivity = new WeakReference<>(activity);
-        }
-
-        public void register(Context context) {
-            IntentFilter intentFilter = new IntentFilter(ACTION_USER_UNLOCKED);
-            intentFilter.addAction(ACTION_USER_SWITCHED);
-            context.registerReceiver(this, intentFilter);
-        }
-
-        public void unregister(Context context) {
-            context.unregisterReceiver(this);
-        }
-
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            MainClusterActivity activity = mActivity.get();
-            if (Log.isLoggable(TAG, Log.DEBUG)) {
-                Log.d(TAG, "Broadcast received: " + intent);
-            }
-            activity.tryLaunchNavigationActivity();
-        }
-    }
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -258,9 +230,6 @@ public class MainClusterActivity extends FragmentActivity implements
 
         mActivityMonitor.start();
 
-        mUserReceiver = new UserReceiver(this);
-        mUserReceiver.register(this);
-
         InMemoryPhoneBook.init(this);
 
         PhoneFragmentViewModel phoneViewModel = ViewModelProviders.of(this).get(
@@ -294,7 +263,6 @@ public class MainClusterActivity extends FragmentActivity implements
     protected void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "onDestroy");
-        mUserReceiver.unregister(this);
         mActivityMonitor.stop();
         if (mService != null) {
             mService.unregisterClient(this);
