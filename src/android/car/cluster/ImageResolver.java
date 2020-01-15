@@ -44,12 +44,7 @@ public class ImageResolver {
         /**
          * Returns a {@link Bitmap} given a request Uri and dimensions
          */
-        Bitmap getBitmap(Uri uri, int width, int height);
-
-        /**
-         * Returns a {@link Bitmap} given a request Uri, dimensions, and offLanesAlpha value
-         */
-        Bitmap getBitmap(Uri uri, int width, int height, float offLanesAlpha);
+        Bitmap getBitmap(Uri uri, int width, int height) throws IllegalArgumentException;
     }
 
     /**
@@ -69,22 +64,6 @@ public class ImageResolver {
      */
     @NonNull
     public CompletableFuture<Bitmap> getBitmap(@NonNull ImageReference img, int width, int height) {
-        return getBitmap(img, width, height, 1f);
-    }
-
-    /**
-     * Returns a {@link CompletableFuture} that provides a bitmap from a {@link ImageReference}.
-     * This image would fit inside the provided size. Either width, height or both should be greater
-     * than 0.
-     *
-     * @param width         required width, or 0 if width is flexible based on height.
-     * @param height        required height, or 0 if height is flexible based on width.
-     * @param offLanesAlpha opacity value for off lane guidance images. Only applies to lane
-     *                      guidance images. 0 (transparent) <= offLanesAlpha <= 1 (opaque).
-     */
-    @NonNull
-    public CompletableFuture<Bitmap> getBitmap(@NonNull ImageReference img, int width, int height,
-            float offLanesAlpha) {
         if (Log.isLoggable(TAG, Log.DEBUG)) {
             Log.d(TAG, String.format("Requesting image %s (width: %d, height: %d)",
                     img.getContentUri(), width, height));
@@ -101,9 +80,9 @@ public class ImageResolver {
             Uri uri = Uri.parse(img.getContentUri());
             Bitmap bitmap = null;
             try {
-                bitmap = mFetcher.getBitmap(uri, adjusted.x, adjusted.y, offLanesAlpha);
+                bitmap = mFetcher.getBitmap(uri, adjusted.x, adjusted.y);
             } catch (IllegalArgumentException e) {
-                Log.e(TAG, e.getMessage());
+                Log.e(TAG, "Bitmap must have positive width and height");
             }
             if (bitmap == null) {
                 if (Log.isLoggable(TAG, Log.DEBUG)) {
@@ -131,28 +110,12 @@ public class ImageResolver {
     @NonNull
     public CompletableFuture<Map<ImageReference, Bitmap>> getBitmaps(
             @NonNull List<ImageReference> imgs, int width, int height) {
-        return getBitmaps(imgs, width, height, 1f);
-    }
-
-    /**
-     * Same as {@link #getBitmap(ImageReference, int, int)} but it works on a list of images. The
-     * returning {@link CompletableFuture} will contain a map from each {@link ImageReference} to
-     * its bitmap. If any image fails to be fetched, the whole future completes exceptionally.
-     *
-     * @param width         required width, or 0 if width is flexible based on height.
-     * @param height        required height, or 0 if height is flexible based on width.
-     * @param offLanesAlpha opacity value for off lane guidance images. Only applies to lane
-     *                      guidance images. 0 (transparent) <= offLanesAlpha <= 1 (opaque).
-     */
-    @NonNull
-    public CompletableFuture<Map<ImageReference, Bitmap>> getBitmaps(
-            @NonNull List<ImageReference> imgs, int width, int height, float offLanesAlpha) {
         CompletableFuture<Map<ImageReference, Bitmap>> future = new CompletableFuture<>();
 
         Map<ImageReference, CompletableFuture<Bitmap>> bitmapFutures = imgs.stream().collect(
                 Collectors.toMap(
                         img -> img,
-                        img -> getBitmap(img, width, height, offLanesAlpha)));
+                        img -> getBitmap(img, width, height)));
 
         CompletableFuture.allOf(bitmapFutures.values().toArray(new CompletableFuture[0]))
                 .thenAccept(v -> {
