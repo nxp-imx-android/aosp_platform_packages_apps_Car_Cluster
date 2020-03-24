@@ -186,7 +186,7 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
         mHandler.removeCallbacks(mLaunchMainActivity);
         ActivityOptions options = ActivityOptions.makeBasic();
         options.setLaunchDisplayId(mClusterDisplayId);
-        boolean useNavigationOnly = getResources().getBoolean(R.bool.navigationOnly);
+        boolean useNavigationOnly = true;  // getResources().getBoolean(R.bool.navigationOnly);
         Intent intent;
         int userId = UserHandle.USER_SYSTEM;
         if (useNavigationOnly) {
@@ -215,12 +215,14 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
             Log.e(TAG, "Failed to resolve the navigation activity");
             return null;
         }
-        Rect displaySize = new Rect(0, 0, 320, 240);  // Arbitrary size, better than nothing.
+        Rect displaySize = new Rect(0, 0, 240, 320);  // Arbitrary size, better than nothing.
         DisplayManager dm = (DisplayManager) getSystemService(DisplayManager.class);
         Display display = dm.getDisplay(displayId);
         if (display != null) {
             display.getRectSize(displaySize);
         }
+        setClusterActivityState(ClusterActivityState.create(/* visible= */ true,
+                    /* unobscuredBounds= */ new Rect(0, 0, 240, 320)));
         return new Intent(Intent.ACTION_MAIN)
             .setComponent(component)
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
