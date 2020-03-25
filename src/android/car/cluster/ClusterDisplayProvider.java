@@ -16,15 +16,21 @@
 
 package android.car.cluster;
 
+import android.annotation.NonNull;
 import android.annotation.Nullable;
+import android.car.Car;
+import android.car.CarOccupantZoneManager;
+import android.car.CarOccupantZoneManager.OccupantZoneInfo;
 import android.content.Context;
 import android.hardware.display.DisplayManager;
 import android.hardware.display.DisplayManager.DisplayListener;
-import android.os.SystemProperties;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Display;
-import android.view.DisplayAddress;
+
+import com.android.internal.util.Preconditions;
+
+import java.util.List;
 
 /**
  * This class provides a display for instrument cluster renderer.
@@ -38,9 +44,6 @@ import android.view.DisplayAddress;
 public class ClusterDisplayProvider {
     private static final String TAG = "Cluster.DisplayProvider";
 
-    private static final String RO_CLUSTER_DISPLAY_PORT = "ro.car.cluster.displayport";
-    private static final String PERSIST_CLUSTER_DISPLAY_PORT =
-            "persist.car.cluster.displayport";
     private static final int NETWORKED_DISPLAY_WIDTH = 1280;
     private static final int NETWORKED_DISPLAY_HEIGHT = 720;
     private static final int NETWORKED_DISPLAY_DPI = 320;
@@ -54,19 +57,46 @@ public class ClusterDisplayProvider {
     ClusterDisplayProvider(Context context, DisplayListener clusterDisplayListener) {
         mListener = clusterDisplayListener;
         mDisplayManager = context.getSystemService(DisplayManager.class);
+        Car.createCar(context, null, Car.CAR_WAIT_TIMEOUT_WAIT_FOREVER,
+                (car, ready) -> {
+                    if (!ready) return;
+                    initClusterDisplayProvider(context, (CarOccupantZoneManager) car.getCarManager(
+                            Car.CAR_OCCUPANT_ZONE_SERVICE));
+                });
+    }
 
-        Display clusterDisplay = getInstrumentClusterDisplay(mDisplayManager);
+    private void initClusterDisplayProvider(
+            Context context, CarOccupantZoneManager occupantZoneManager) {
+        Preconditions.checkArgument(
+                occupantZoneManager != null,"Can't get CarOccupantZoneManager");
+        OccupantZoneInfo driverZone = getOccupantZoneForDriver(occupantZoneManager);
+        Display clusterDisplay = occupantZoneManager.getDisplayForOccupant(
+                driverZone, CarOccupantZoneManager.DISPLAY_TYPE_INSTRUMENT_CLUSTER);
         if (clusterDisplay != null) {
             Log.i(TAG, String.format("Found display: %s (id: %d, owner: %s)",
                     clusterDisplay.getName(), clusterDisplay.getDisplayId(),
                     clusterDisplay.getOwnerPackageName()));
             mClusterDisplayId = clusterDisplay.getDisplayId();
-            clusterDisplayListener.onDisplayAdded(clusterDisplay.getDisplayId());
+            mListener.onDisplayAdded(clusterDisplay.getDisplayId());
             trackClusterDisplay(null /* no need to track display by name */);
         } else {
             Log.i(TAG, "No physical cluster display found, starting network display");
             setupNetworkDisplay(context);
         }
+    }
+
+    private static @NonNull OccupantZoneInfo getOccupantZoneForDriver(
+            @NonNull CarOccupantZoneManager occupantZoneManager) {
+        List<OccupantZoneInfo> zones = occupantZoneManager.getAllOccupantZones();
+        int zones_size = zones.size();
+        for (int i = 0; i < zones_size; ++i) {
+            OccupantZoneInfo zone = zones.get(i);
+            // Assumes that a Car has only one driver.
+            if (zone.occupantType == CarOccupantZoneManager.OCCUPANT_TYPE_DRIVER) {
+                return zone;
+            }
+        }
+        throw new IllegalStateException("Can't find the OccupantZoneInfo for driver");
     }
 
     private void setupNetworkDisplay(Context context) {
@@ -114,36 +144,6 @@ public class ClusterDisplayProvider {
             }
 
         }, null);
-    }
-
-    private static Display getInstrumentClusterDisplay(DisplayManager displayManager) {
-        Display[] displays = displayManager.getDisplays();
-        Log.d(TAG, "There are currently " + displays.length + " displays connected.");
-
-        final int displayPortPrimary = 0;  // primary port should not be instrument cluster.
-        int displayPort = SystemProperties.getInt(PERSIST_CLUSTER_DISPLAY_PORT,
-                displayPortPrimary);
-        if (displayPort == displayPortPrimary) {
-            displayPort = SystemProperties.getInt(RO_CLUSTER_DISPLAY_PORT,
-                    displayPortPrimary);
-            if (displayPort == displayPortPrimary) {
-                return null;
-            }
-        }
-        // match port for system display ( = null getOwnerPackageName())
-        // with separate check for main display as main display should be never picked up.
-        for (Display display : displays) {
-            if (display.getDisplayId() != Display.DEFAULT_DISPLAY
-                    && display.getOwnerPackageName() == null
-                    && display.getAddress() != null
-                    && display.getAddress() instanceof DisplayAddress.Physical) {
-                final byte port = ((DisplayAddress.Physical) display.getAddress()).getPort();
-                if (displayPort == port) {
-                    return display;
-                }
-            }
-        }
-        return null;
     }
 
     @Override
