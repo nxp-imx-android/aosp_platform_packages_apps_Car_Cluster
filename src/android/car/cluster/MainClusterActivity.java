@@ -16,6 +16,8 @@
 package android.car.cluster;
 
 import static android.car.cluster.ClusterRenderingService.LOCAL_BINDING_ACTION;
+import static android.content.Intent.ACTION_SCREEN_OFF;
+import static android.content.Intent.ACTION_USER_PRESENT;
 import static android.content.Intent.ACTION_USER_SWITCHED;
 import static android.content.Intent.ACTION_USER_UNLOCKED;
 import static android.content.PermissionChecker.PERMISSION_GRANTED;
@@ -201,6 +203,23 @@ public class MainClusterActivity extends FragmentActivity implements
         mPager.setAdapter(new ClusterPageAdapter(getSupportFragmentManager()));
         mOrderToFacet.get(NAV_FACET_ID).mButton.requestFocus();
         mNavStateController = new NavStateController(findViewById(R.id.navigation_state));
+
+        IntentFilter filter = new IntentFilter();
+        filter.addAction(ACTION_USER_PRESENT);
+        filter.addAction(ACTION_SCREEN_OFF);
+        registerReceiver(new BroadcastReceiver(){
+            @Override
+            public void onReceive(final Context context, final Intent intent) {
+                if (intent.getAction().equals(Intent.ACTION_SCREEN_OFF)){
+                    Log.d(TAG, "ACTION_SCREEN_OFF");
+                    mNavStateController.hideNavigationStateInfo();
+                }
+                else if (intent.getAction().equals(Intent.ACTION_USER_PRESENT)) {
+                    Log.d(TAG, "ACTION_USER_PRESENT");
+                    mNavStateController.showNavigationStateInfo();
+                }
+            }
+        }, filter);
 
         mClusterViewModel = ViewModelProviders.of(this).get(ClusterViewModel.class);
         mClusterViewModel.getNavigationFocus().observe(this, focus -> {
