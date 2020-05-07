@@ -15,6 +15,10 @@
  */
 package android.car.cluster;
 
+import static android.car.cluster.navigation.NavigationState.NavigationStateProto.ServiceStatus.NORMAL;
+import static android.car.cluster.navigation.NavigationState.NavigationStateProto.ServiceStatus.REROUTING;
+import static android.car.cluster.navigation.NavigationState.NavigationStateProto.ServiceStatus.SERVICE_STATUS_UNSPECIFIED;
+
 import android.annotation.Nullable;
 import android.car.cluster.navigation.NavigationState.Destination;
 import android.car.cluster.navigation.NavigationState.Destination.Traffic;
@@ -44,6 +48,7 @@ public class NavStateController {
 
     private Handler mHandler = new Handler();
 
+    private View mNavigationState;
     private LinearLayout mSectionManeuver;
     private LinearLayout mSectionNavigation;
     private LinearLayout mSectionServiceStatus;
@@ -66,6 +71,7 @@ public class NavStateController {
      * @param container {@link View} containing the navigation state views
      */
     public NavStateController(View container) {
+        mNavigationState = container;
         mSectionManeuver = container.findViewById(R.id.section_maneuver);
         mSectionNavigation = container.findViewById(R.id.section_navigation);
         mSectionServiceStatus = container.findViewById(R.id.section_service_status);
@@ -80,6 +86,14 @@ public class NavStateController {
         mCue = container.findViewById(R.id.cue);
 
         mContext = container.getContext();
+    }
+
+    public void hideNavigationStateInfo() {
+        mNavigationState.setVisibility(View.INVISIBLE);
+    }
+
+    public void showNavigationStateInfo() {
+        mNavigationState.setVisibility(View.VISIBLE);
     }
 
     public void setImageResolver(@Nullable ImageResolver imageResolver) {
@@ -98,7 +112,13 @@ public class NavStateController {
             return;
         }
 
-        if (state.getServiceStatus() == NavigationStateProto.ServiceStatus.REROUTING) {
+        NavigationStateProto.ServiceStatus serviceStatus = state.getServiceStatus();
+        if (serviceStatus == SERVICE_STATUS_UNSPECIFIED) {
+            mSectionManeuver.setVisibility(View.INVISIBLE);
+            mSectionNavigation.setVisibility(View.INVISIBLE);
+            mSectionServiceStatus.setVisibility(View.INVISIBLE);
+            return;
+        } else if (serviceStatus == REROUTING) {
             mSectionManeuver.setVisibility(View.INVISIBLE);
             mSectionNavigation.setVisibility(View.INVISIBLE);
             mSectionServiceStatus.setVisibility(View.VISIBLE);
@@ -115,8 +135,8 @@ public class NavStateController {
         Traffic traffic = destination != null ? destination.getTraffic() : null;
         String eta = destination != null
                 ? destination.getFormattedDurationUntilArrival().isEmpty()
-                    ? formatEta(destination.getEstimatedTimeAtArrival())
-                    : destination.getFormattedDurationUntilArrival()
+                ? formatEta(destination.getEstimatedTimeAtArrival())
+                : destination.getFormattedDurationUntilArrival()
                 : null;
         mEta.setText(eta);
         mEta.setTextColor(getTrafficColor(traffic));
