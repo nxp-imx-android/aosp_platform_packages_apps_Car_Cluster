@@ -186,7 +186,7 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
         mHandler.removeCallbacks(mLaunchMainActivity);
         ActivityOptions options = ActivityOptions.makeBasic();
         options.setLaunchDisplayId(mClusterDisplayId);
-        boolean useNavigationOnly = true;  // getResources().getBoolean(R.bool.navigationOnly);
+        boolean useNavigationOnly = getResources().getBoolean(R.bool.navigationOnly);
         Intent intent;
         int userId = UserHandle.USER_SYSTEM;
         if (useNavigationOnly) {
