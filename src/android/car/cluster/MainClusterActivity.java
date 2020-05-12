@@ -461,16 +461,6 @@ public class MainClusterActivity extends FragmentActivity implements
             if (navigationApp == null) {
                 return null;
             }
-
-            // Check that it has the right permissions
-            if (pm.checkPermission(Car.PERMISSION_CAR_DISPLAY_IN_CLUSTER, navigationApp.activityInfo
-                    .packageName) != PERMISSION_GRANTED) {
-                Log.i(TAG, String.format("Package '%s' doesn't have permission %s",
-                        navigationApp.activityInfo.packageName,
-                        Car.PERMISSION_CAR_DISPLAY_IN_CLUSTER));
-                return null;
-            }
-
             return new ComponentName(navigationApp.activityInfo.packageName,
                     navigationApp.activityInfo.name);
         } catch (URISyntaxException ex) {
