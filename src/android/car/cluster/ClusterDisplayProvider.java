@@ -36,10 +36,7 @@ import java.util.List;
  * This class provides a display for instrument cluster renderer.
  * <p>
  * By default it will try to provide physical secondary display if it is connected, if secondary
- * display is not connected during creation of this class then it will start networked virtual
- * display and listens for incoming connections.
- *
- * @see {@link NetworkedVirtualDisplay}
+ * display is not connected during creation of this class then it will throw a IllegalStateException
  */
 public class ClusterDisplayProvider {
     private static final String TAG = "Cluster.DisplayProvider";
@@ -51,7 +48,6 @@ public class ClusterDisplayProvider {
     private final DisplayListener mListener;
     private final DisplayManager mDisplayManager;
 
-    private NetworkedVirtualDisplay mNetworkedVirtualDisplay;
     private int mClusterDisplayId = -1;
 
     ClusterDisplayProvider(Context context, DisplayListener clusterDisplayListener) {
@@ -80,8 +76,7 @@ public class ClusterDisplayProvider {
             mListener.onDisplayAdded(clusterDisplay.getDisplayId());
             trackClusterDisplay(null /* no need to track display by name */);
         } else {
-            Log.i(TAG, "No physical cluster display found, starting network display");
-            setupNetworkDisplay(context);
+            throw new IllegalStateException("ClusterDisplay is mandatory");
         }
     }
 
@@ -97,13 +92,6 @@ public class ClusterDisplayProvider {
             }
         }
         throw new IllegalStateException("Can't find the OccupantZoneInfo for driver");
-    }
-
-    private void setupNetworkDisplay(Context context) {
-        mNetworkedVirtualDisplay = new NetworkedVirtualDisplay(context,
-                NETWORKED_DISPLAY_WIDTH, NETWORKED_DISPLAY_HEIGHT, NETWORKED_DISPLAY_DPI);
-        String displayName = mNetworkedVirtualDisplay.start();
-        trackClusterDisplay(displayName);
     }
 
     private void trackClusterDisplay(@Nullable String displayName) {
