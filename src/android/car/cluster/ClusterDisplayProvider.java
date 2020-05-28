@@ -16,15 +16,11 @@
 
 package android.car.cluster;
 
-import android.annotation.NonNull;
-import android.annotation.Nullable;
 import android.car.Car;
 import android.car.CarOccupantZoneManager;
 import android.car.CarOccupantZoneManager.OccupantZoneInfo;
 import android.content.Context;
-import android.hardware.display.DisplayManager;
 import android.hardware.display.DisplayManager.DisplayListener;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.Display;
 
@@ -36,23 +32,20 @@ import java.util.List;
  * This class provides a display for instrument cluster renderer.
  * <p>
  * By default it will try to provide physical secondary display if it is connected, if secondary
- * display is not connected during creation of this class then it will throw a IllegalStateException
+ * display is not connected during creation of this class then it will wait for the display will
+ * be added.
  */
 public class ClusterDisplayProvider {
     private static final String TAG = "Cluster.DisplayProvider";
-
-    private static final int NETWORKED_DISPLAY_WIDTH = 1280;
-    private static final int NETWORKED_DISPLAY_HEIGHT = 720;
-    private static final int NETWORKED_DISPLAY_DPI = 320;
+    private static final boolean DEBUG = false;
 
     private final DisplayListener mListener;
-    private final DisplayManager mDisplayManager;
+    private CarOccupantZoneManager mOccupantZoneManager;
 
-    private int mClusterDisplayId = -1;
+    private int mClusterDisplayId = Display.INVALID_DISPLAY;
 
     ClusterDisplayProvider(Context context, DisplayListener clusterDisplayListener) {
         mListener = clusterDisplayListener;
-        mDisplayManager = context.getSystemService(DisplayManager.class);
         Car.createCar(context, null, Car.CAR_WAIT_TIMEOUT_WAIT_FOREVER,
                 (car, ready) -> {
                     if (!ready) return;
@@ -65,73 +58,56 @@ public class ClusterDisplayProvider {
             Context context, CarOccupantZoneManager occupantZoneManager) {
         Preconditions.checkArgument(
                 occupantZoneManager != null,"Can't get CarOccupantZoneManager");
-        OccupantZoneInfo driverZone = getOccupantZoneForDriver(occupantZoneManager);
-        Display clusterDisplay = occupantZoneManager.getDisplayForOccupant(
-                driverZone, CarOccupantZoneManager.DISPLAY_TYPE_INSTRUMENT_CLUSTER);
+        mOccupantZoneManager = occupantZoneManager;
+        checkClusterDisplayAdded();
+        mOccupantZoneManager.registerOccupantZoneConfigChangeListener(
+                new ClusterDisplayChangeListener());
+    }
+
+    private void checkClusterDisplayAdded() {
+        Display clusterDisplay = getClusterDisplay();
         if (clusterDisplay != null) {
             Log.i(TAG, String.format("Found display: %s (id: %d, owner: %s)",
                     clusterDisplay.getName(), clusterDisplay.getDisplayId(),
                     clusterDisplay.getOwnerPackageName()));
             mClusterDisplayId = clusterDisplay.getDisplayId();
             mListener.onDisplayAdded(clusterDisplay.getDisplayId());
-            trackClusterDisplay(null /* no need to track display by name */);
-        } else {
-            throw new IllegalStateException("ClusterDisplay is mandatory");
         }
     }
 
-    private static @NonNull OccupantZoneInfo getOccupantZoneForDriver(
-            @NonNull CarOccupantZoneManager occupantZoneManager) {
-        List<OccupantZoneInfo> zones = occupantZoneManager.getAllOccupantZones();
+    private Display getClusterDisplay() {
+        List<OccupantZoneInfo> zones = mOccupantZoneManager.getAllOccupantZones();
         int zones_size = zones.size();
         for (int i = 0; i < zones_size; ++i) {
             OccupantZoneInfo zone = zones.get(i);
             // Assumes that a Car has only one driver.
             if (zone.occupantType == CarOccupantZoneManager.OCCUPANT_TYPE_DRIVER) {
-                return zone;
+                return mOccupantZoneManager.getDisplayForOccupant(
+                        zone, CarOccupantZoneManager.DISPLAY_TYPE_INSTRUMENT_CLUSTER);
             }
         }
-        throw new IllegalStateException("Can't find the OccupantZoneInfo for driver");
+        Log.e(TAG, "Can't find the OccupantZoneInfo for driver");
+        return null;
     }
 
-    private void trackClusterDisplay(@Nullable String displayName) {
-        mDisplayManager.registerDisplayListener(new DisplayListener() {
-            @Override
-            public void onDisplayAdded(int displayId) {
-                boolean clusterDisplayAdded = false;
-
-                if (displayName == null && mClusterDisplayId == -1) {
-                    mClusterDisplayId = displayId;
-                    clusterDisplayAdded = true;
-                } else {
-                    Display display = mDisplayManager.getDisplay(displayId);
-                    if (display != null && TextUtils.equals(display.getName(), displayName)) {
-                        mClusterDisplayId = displayId;
-                        clusterDisplayAdded = true;
-                    }
-                }
-
-                if (clusterDisplayAdded) {
-                    mListener.onDisplayAdded(displayId);
+    private final class ClusterDisplayChangeListener implements
+            CarOccupantZoneManager.OccupantZoneConfigChangeListener {
+        @Override
+        public void onOccupantZoneConfigChanged(int changeFlags) {
+            if (DEBUG) Log.d(TAG, "onOccupantZoneConfigChanged changeFlags=" + changeFlags);
+            if ((changeFlags & CarOccupantZoneManager.ZONE_CONFIG_CHANGE_FLAG_DISPLAY) == 0) {
+                return;
+            }
+            if (mClusterDisplayId == Display.INVALID_DISPLAY) {
+                checkClusterDisplayAdded();
+            } else {
+                Display clusterDisplay = getClusterDisplay();
+                if (clusterDisplay == null) {
+                    mListener.onDisplayRemoved(mClusterDisplayId);
+                    mClusterDisplayId = Display.INVALID_DISPLAY;
                 }
             }
-
-            @Override
-            public void onDisplayRemoved(int displayId) {
-                if (displayId == mClusterDisplayId) {
-                    mClusterDisplayId = -1;
-                    mListener.onDisplayRemoved(displayId);
-                }
-            }
-
-            @Override
-            public void onDisplayChanged(int displayId) {
-                if (displayId == mClusterDisplayId) {
-                    mListener.onDisplayChanged(displayId);
-                }
-            }
-
-        }, null);
+        }
     }
 
     @Override
