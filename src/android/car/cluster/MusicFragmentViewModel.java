@@ -48,7 +48,7 @@ public final class MusicFragmentViewModel extends AndroidViewModel {
         mMediaSourceViewModel = mediaSourceViewModel;
         mMediaSource = mMediaSourceViewModel.getPrimaryMediaSource();
         mAppName = mapNonNull(mMediaSource, MediaSource::getDisplayName);
-        mAppIcon = mapNonNull(mMediaSource, MediaSource::getRoundPackageIcon);
+        mAppIcon = mapNonNull(mMediaSource, MediaSource::getCroppedPackageIcon);
     }
 
     LiveData<CharSequence> getAppName() {
