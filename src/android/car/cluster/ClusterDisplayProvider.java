@@ -40,18 +40,25 @@ public class ClusterDisplayProvider {
     private static final boolean DEBUG = false;
 
     private final DisplayListener mListener;
+    private final Car mCar;
     private CarOccupantZoneManager mOccupantZoneManager;
 
     private int mClusterDisplayId = Display.INVALID_DISPLAY;
 
     ClusterDisplayProvider(Context context, DisplayListener clusterDisplayListener) {
         mListener = clusterDisplayListener;
-        Car.createCar(context, null, Car.CAR_WAIT_TIMEOUT_WAIT_FOREVER,
+        mCar = Car.createCar(context, null, Car.CAR_WAIT_TIMEOUT_WAIT_FOREVER,
                 (car, ready) -> {
                     if (!ready) return;
                     initClusterDisplayProvider(context, (CarOccupantZoneManager) car.getCarManager(
                             Car.CAR_OCCUPANT_ZONE_SERVICE));
                 });
+    }
+
+    void release() {
+        if (mCar != null && mCar.isConnected()) {
+            mCar.disconnect();
+        }
     }
 
     private void initClusterDisplayProvider(
