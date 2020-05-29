@@ -180,6 +180,7 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
     public void onDestroy() {
         super.onDestroy();
         mUserReceiver.unregister(this);
+        mDisplayProvider.release();
     }
 
     private void launchMainActivity() {
