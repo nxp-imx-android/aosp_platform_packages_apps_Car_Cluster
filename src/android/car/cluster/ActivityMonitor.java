@@ -166,6 +166,9 @@ public class ActivityMonitor {
                 }
                 List<StackInfo> infos = mActivityManager.getAllStackInfos();
                 for (StackInfo info : infos) {
+                    if (!info.visible) {
+                        continue;
+                    }
                     Set<ActivityListener> listeners = mListeners.get(info.displayId);
                     if (listeners != null && !listeners.isEmpty()) {
                         for (ActivityListener listener : listeners) {
