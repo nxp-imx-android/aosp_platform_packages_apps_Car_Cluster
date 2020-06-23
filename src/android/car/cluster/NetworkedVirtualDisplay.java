@@ -164,19 +164,27 @@ public class NetworkedVirtualDisplay {
         Log.i(TAG, "onVirtualDisplayReady, display: " + display);
     }
 
-    private void startCasting(Handler handler) {
+    private boolean setupCasting(Handler handler) {
         Log.i(TAG, "Start casting...");
         if (mVideoEncoder != null) {
             Log.i(TAG, "Already started casting");
-            return;
+            return true;
         }
         mVideoEncoder = createVideoStream(handler);
+
+        if (mVideoEncoder == null) {
+            return false;
+        }
 
         if (mVirtualDisplay == null) {
             mVirtualDisplay = createVirtualDisplay();
         }
 
         mVirtualDisplay.setSurface(mVideoEncoder.createInputSurface());
+        return true;
+    }
+
+    private void startCasting() {
         mVideoEncoder.start();
         Log.i(TAG, "Video encoder started");
     }
@@ -207,8 +215,8 @@ public class NetworkedVirtualDisplay {
             public void onError(@NonNull MediaCodec codec, @NonNull CodecException e) {
                 Log.e(TAG, "onError, codec: " + codec, e);
                 mCounter.bufferErrors++;
-                stopCasting();
-                startCasting(handler);
+                mHandler.sendMessage(Message.obtain(mHandler, MSG_STOP));                
+                mHandler.sendMessage(Message.obtain(mHandler, MSG_START));                
             }
 
             @Override
@@ -286,6 +294,7 @@ public class NetworkedVirtualDisplay {
 
     private class BroadcastThreadHandler extends Handler {
         private static final int MAX_FAIL_COUNT = 10;
+        private static final int RETRY_DELAY = 500;
         private int mFailConnectCounter;
 
         BroadcastThreadHandler(Looper looper) {
@@ -311,7 +320,7 @@ public class NetworkedVirtualDisplay {
                     if (mActiveThread == null) {
                         mActiveThread = tryNetworkConnect();
                     }
-                    if (mActiveThread == null) {
+                    if (mActiveThread == null || !setupCasting(this)) {
                         // When failed attempt limit is reached, clean up and quit this thread.
                         mFailConnectCounter++;
                         if (mFailConnectCounter >= MAX_FAIL_COUNT) {
@@ -319,7 +328,8 @@ public class NetworkedVirtualDisplay {
                             release();
                             throw new RuntimeException("Abort after failed connection attempts");
                         }
-                        mHandler.sendMessage(Message.obtain(mHandler, MSG_START));
+                        mHandler.sendMessageDelayed(Message.obtain(mHandler, MSG_START), 
+                            RETRY_DELAY);
                         break;
                     }
 
@@ -327,10 +337,9 @@ public class NetworkedVirtualDisplay {
                         mFailConnectCounter = 0;
                         mCounter.clientsConnected++;
                         mActiveThread.start();
-                        startCasting(this);
+                        startCasting();
                     } catch (Exception e) {
-                        Log.e(TAG, "Failed to start thread", e);
-                        Log.e(TAG, "DebugCounter: " + mCounter);
+                        Log.e(TAG, "Failed to start thread (counter: " + mCounter + ")", e);
                     }
                     break;
 
