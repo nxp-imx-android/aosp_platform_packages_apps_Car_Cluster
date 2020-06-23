@@ -56,6 +56,7 @@ import androidx.fragment.app.FragmentActivity;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentPagerAdapter;
 import androidx.lifecycle.LiveData;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.viewpager.widget.ViewPager;
 
@@ -112,6 +113,7 @@ public class MainClusterActivity extends FragmentActivity implements
     private static final int NAVIGATION_ACTIVITY_RETRY_INTERVAL_MS = 1000;
     private static final int NAVIGATION_ACTIVITY_RELAUNCH_DELAY_MS = 5000;
 
+    private final UserReceiver mUserReceiver = new UserReceiver();
     private ActivityMonitor mActivityMonitor = new ActivityMonitor();
     private final Handler mHandler = new Handler();
     private final Runnable mRetryLaunchNavigationActivity = this::tryLaunchNavigationActivity;
@@ -174,6 +176,28 @@ public class MainClusterActivity extends FragmentActivity implements
         mClusterViewModel.setCurrentNavigationActivity(activity);
     };
 
+    /**
+     * On user switch the navigation application must be re-launched on the new user. Otherwise
+     * the navigation fragment will keep showing the application on the previous user.
+     * {@link MainClusterActivity} is shared between all users (it is not restarted on user switch)
+     */
+    private class UserReceiver extends BroadcastReceiver {
+        void register(Context context) {
+            IntentFilter intentFilter = new IntentFilter(ACTION_USER_UNLOCKED);
+            context.registerReceiverForAllUsers(this, intentFilter, null, null);
+        }
+        void unregister(Context context) {
+            context.unregisterReceiver(this);
+        }
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (Log.isLoggable(TAG, Log.DEBUG)) {
+                Log.d(TAG, "Broadcast received: " + intent);
+            }
+            tryLaunchNavigationActivity();
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -221,7 +245,7 @@ public class MainClusterActivity extends FragmentActivity implements
             }
         }, filter);
 
-        mClusterViewModel = ViewModelProviders.of(this).get(ClusterViewModel.class);
+        mClusterViewModel = new ViewModelProvider(this).get(ClusterViewModel.class);
         mClusterViewModel.getNavigationFocus().observe(this, focus -> {
             // If focus is lost, we launch the default navigation activity again.
             if (!focus) {
@@ -249,9 +273,11 @@ public class MainClusterActivity extends FragmentActivity implements
 
         mActivityMonitor.start();
 
+        mUserReceiver.register(this);
+
         InMemoryPhoneBook.init(this);
 
-        PhoneFragmentViewModel phoneViewModel = ViewModelProviders.of(this).get(
+        PhoneFragmentViewModel phoneViewModel = new ViewModelProvider(this).get(
                 PhoneFragmentViewModel.class);
 
         phoneViewModel.setPhoneStateCallback(new PhoneFragmentViewModel.PhoneStateCallback() {
@@ -282,6 +308,7 @@ public class MainClusterActivity extends FragmentActivity implements
     protected void onDestroy() {
         super.onDestroy();
         Log.d(TAG, "onDestroy");
+        mUserReceiver.unregister(this);
         mActivityMonitor.stop();
         if (mService != null) {
             mService.unregisterClient(this);
@@ -413,7 +440,7 @@ public class MainClusterActivity extends FragmentActivity implements
             Intent intent = new Intent(Intent.ACTION_MAIN)
                     .setComponent(navigationActivity)
                     .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    .putExtra(CarInstrumentClusterManager.KEY_EXTRA_ACTIVITY_STATE,
+                    .putExtra(Car.CAR_EXTRA_CLUSTER_ACTIVITY_STATE,
                             activityState.toBundle());
 
             Log.d(TAG, "Launching: " + intent + " on display: " + mNavigationDisplay.mDisplayId);
@@ -439,7 +466,7 @@ public class MainClusterActivity extends FragmentActivity implements
      * <ul>
      * <li>Dynamically detect what's the default navigation activity the user has selected on the
      * head unit, and obtain the activity marked with
-     * {@link CarInstrumentClusterManager#CATEGORY_NAVIGATION} from the same package.
+     * {@link Car#CAR_CATEGORY_NAVIGATION} from the same package.
      * <li>Let the user select one from settings.
      * </ul>
      */
