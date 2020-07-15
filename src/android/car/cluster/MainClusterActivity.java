@@ -247,10 +247,8 @@ public class MainClusterActivity extends FragmentActivity implements
 
         mClusterViewModel = new ViewModelProvider(this).get(ClusterViewModel.class);
         mClusterViewModel.getNavigationFocus().observe(this, focus -> {
-            // If focus is lost, we launch the default navigation activity again.
             if (!focus) {
                 mNavStateController.update(null);
-                tryLaunchNavigationActivity();
             }
         });
         mClusterViewModel.getNavigationActivityState().observe(this, state -> {
@@ -444,11 +442,11 @@ public class MainClusterActivity extends FragmentActivity implements
                             activityState.toBundle());
 
             Log.d(TAG, "Launching: " + intent + " on display: " + mNavigationDisplay.mDisplayId);
-            Bundle activityOptions = ActivityOptions.makeBasic()
-                    .setLaunchDisplayId(mNavigationDisplay.mDisplayId)
-                    .toBundle();
+            ActivityOptions activityOptions = ActivityOptions.makeBasic()
+                    .setLaunchDisplayId(mNavigationDisplay.mDisplayId);
 
-            startActivityAsUser(intent, activityOptions, UserHandle.CURRENT);
+            mService.startFixedActivityModeForDisplayAndUser(
+                    intent, activityOptions, ActivityManager.getCurrentUser());
         } catch (ActivityNotFoundException ex) {
             // Some activities might not be available right on startup. We will retry.
             mHandler.postDelayed(mRetryLaunchNavigationActivity,
