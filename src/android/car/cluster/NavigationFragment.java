@@ -138,7 +138,7 @@ public class NavigationFragment extends Fragment {
                 Log.i(TAG, "surfaceChanged, holder: " + holder + ", size:" + width + "x" + height
                         + ", format:" + format);
 
-                // Create dummy unobscured area to report to navigation activity.
+                // Create mock unobscured area to report to navigation activity.
                 int obscuredWidth = (int) getResources()
                         .getDimension(R.dimen.speedometer_overlap_width);
                 int obscuredHeight = (int) getResources()
