@@ -15,7 +15,6 @@
  */
 package android.car.cluster;
 
-import static android.content.Intent.ACTION_USER_SWITCHED;
 import static android.content.Intent.ACTION_USER_UNLOCKED;
 import static android.content.Intent.FLAG_ACTIVITY_NEW_TASK;
 import static android.view.Display.INVALID_DISPLAY;
@@ -24,7 +23,7 @@ import static java.lang.Integer.parseInt;
 
 import android.app.ActivityManager;
 import android.app.ActivityOptions;
-import android.car.CarNotConnectedException;
+import android.car.Car;
 import android.car.cluster.navigation.NavigationState.NavigationStateProto;
 import android.car.cluster.renderer.InstrumentClusterRenderingService;
 import android.car.cluster.renderer.NavigationRenderer;
@@ -68,7 +67,6 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
     private static final String TAG = "Cluster.Service";
     private static final int NAVIGATION_ACTIVITY_RETRY_INTERVAL_MS = 1000;
 
-    static final int NAV_STATE_EVENT_ID = 1;
     static final String LOCAL_BINDING_ACTION = "local";
     static final String NAV_STATE_PROTO_BUNDLE_KEY = "navstate2";
 
@@ -122,23 +120,17 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
     };
 
     public void setActivityLaunchOptions(int displayId, ClusterActivityState state) {
-        try {
-            ActivityOptions options = displayId != INVALID_DISPLAY
-                    ? ActivityOptions.makeBasic().setLaunchDisplayId(displayId)
-                    : null;
-            setClusterActivityLaunchOptions(CarInstrumentClusterManager.CATEGORY_NAVIGATION,
-                    options);
-            if (Log.isLoggable(TAG, Log.DEBUG)) {
-                Log.d(TAG, String.format("activity options set: %s (displayeId: %d)",
-                        options, options.getLaunchDisplayId()));
-            }
-            setClusterActivityState(CarInstrumentClusterManager.CATEGORY_NAVIGATION,
-                    state.toBundle());
-            if (Log.isLoggable(TAG, Log.DEBUG)) {
-                Log.d(TAG, String.format("activity state set: %s", state));
-            }
-        } catch (CarNotConnectedException ex) {
-            Log.e(TAG, "Unable to update service", ex);
+        ActivityOptions options = displayId != INVALID_DISPLAY
+                ? ActivityOptions.makeBasic().setLaunchDisplayId(displayId)
+                : null;
+        setClusterActivityLaunchOptions(options);
+        if (Log.isLoggable(TAG, Log.DEBUG)) {
+            Log.d(TAG, String.format("activity options set: %s (displayeId: %d)",
+                    options, options != null ? options.getLaunchDisplayId() : -1));
+        }
+        setClusterActivityState(state);
+        if (Log.isLoggable(TAG, Log.DEBUG)) {
+            Log.d(TAG, String.format("activity state set: %s", state));
         }
     }
 
@@ -180,6 +172,7 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
     public void onDestroy() {
         super.onDestroy();
         mUserReceiver.unregister(this);
+        mDisplayProvider.release();
     }
 
     private void launchMainActivity() {
@@ -215,16 +208,18 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
             Log.e(TAG, "Failed to resolve the navigation activity");
             return null;
         }
-        Rect displaySize = new Rect(0, 0, 320, 240);  // Arbitrary size, better than nothing.
-        DisplayManager dm = (DisplayManager) getSystemService(DisplayManager.class);
+        Rect displaySize = new Rect(0, 0, 240, 320);  // Arbitrary size, better than nothing.
+        DisplayManager dm = getSystemService(DisplayManager.class);
         Display display = dm.getDisplay(displayId);
         if (display != null) {
             display.getRectSize(displaySize);
         }
+        setClusterActivityState(ClusterActivityState.create(/* visible= */ true,
+                    /* unobscuredBounds= */ new Rect(0, 0, 240, 320)));
         return new Intent(Intent.ACTION_MAIN)
             .setComponent(component)
             .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            .putExtra(CarInstrumentClusterManager.KEY_EXTRA_ACTIVITY_STATE,
+            .putExtra(Car.CAR_EXTRA_CLUSTER_ACTIVITY_STATE,
                 ClusterActivityState.create(/* visible= */ true,
                     /* unobscuredBounds= */ displaySize).toBundle());
     }
@@ -363,14 +358,9 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
 
             case "setUnobscuredArea": {
                 if (args.length > 5) {
-                    Rect unobscuredArea = new Rect(parseInt(args[2]), parseInt(args[3]),
-                            parseInt(args[4]), parseInt(args[5]));
-                    try {
-                        setClusterActivityState(args[1],
-                                ClusterActivityState.create(true, unobscuredArea).toBundle());
-                    } catch (CarNotConnectedException e) {
-                        Log.i(TAG, "Failed to set activity state.", e);
-                    }
+                    setClusterActivityState(ClusterActivityState.create(true,
+                            new Rect(parseInt(args[2]), parseInt(args[3]),
+                                    parseInt(args[4]), parseInt(args[5]))));
                 } else {
                     Log.i(TAG, "wrong format, expected: category left top right bottom");
                 }
