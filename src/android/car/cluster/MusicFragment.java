@@ -15,6 +15,8 @@
  */
 package android.car.cluster;
 
+import static android.car.media.CarMediaManager.MEDIA_SOURCE_MODE_PLAYBACK;
+
 import android.os.Bundle;
 import android.util.Size;
 import android.view.LayoutInflater;
@@ -51,9 +53,10 @@ public class MusicFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
             Bundle savedInstanceState) {
         FragmentActivity activity = requireActivity();
-        PlaybackViewModel playbackViewModel = PlaybackViewModel.get(activity.getApplication());
+        PlaybackViewModel playbackViewModel =
+                PlaybackViewModel.get(activity.getApplication(), MEDIA_SOURCE_MODE_PLAYBACK);
         MediaSourceViewModel mMediaSourceViewModel = MediaSourceViewModel.get(
-                activity.getApplication());
+                activity.getApplication(), MEDIA_SOURCE_MODE_PLAYBACK);
 
         MusicFragmentViewModel innerViewModel = ViewModelProviders.of(activity).get(
                 MusicFragmentViewModel.class);
