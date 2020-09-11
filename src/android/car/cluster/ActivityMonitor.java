@@ -18,7 +18,7 @@ package android.car.cluster;
 import android.annotation.Nullable;
 import android.annotation.UiThread;
 import android.app.ActivityManager;
-import android.app.ActivityManager.StackInfo;
+import android.app.ActivityTaskManager.RootTaskInfo;
 import android.app.IActivityManager;
 import android.app.IProcessObserver;
 import android.app.TaskStackListener;
@@ -164,8 +164,8 @@ public class ActivityMonitor {
                 if (mActivityManager == null) {
                     return;
                 }
-                List<StackInfo> infos = mActivityManager.getAllStackInfos();
-                for (StackInfo info : infos) {
+                List<RootTaskInfo> infos = mActivityManager.getAllRootTaskInfos();
+                for (RootTaskInfo info : infos) {
                     if (!info.visible) {
                         continue;
                     }
