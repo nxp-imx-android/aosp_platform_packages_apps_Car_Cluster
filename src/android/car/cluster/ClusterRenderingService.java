@@ -49,6 +49,8 @@ import android.view.Display;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 
+import com.android.car.internal.common.UserHelperLite;
+
 import com.google.protobuf.InvalidProtocolBufferException;
 
 import java.io.FileDescriptor;
@@ -189,6 +191,10 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
                 return;
             }
             userId = ActivityManager.getCurrentUser();
+            if (UserHelperLite.isHeadlessSystemUser(userId)) {
+                Log.i(TAG, "Skipping the navigation activity for User 0");
+                return;
+            }
             startFixedActivityModeForDisplayAndUser(intent, options, userId);
         } else {
             intent = getMainClusterActivityIntent();
