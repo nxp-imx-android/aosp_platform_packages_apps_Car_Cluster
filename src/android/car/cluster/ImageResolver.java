@@ -44,12 +44,12 @@ public class ImageResolver {
         /**
          * Returns a {@link Bitmap} given a request Uri and dimensions
          */
-        Bitmap getBitmap(Uri uri, int width, int height);
+        Bitmap getBitmap(@NonNull Uri uri, int width, int height);
 
         /**
          * Returns a {@link Bitmap} given a request Uri, dimensions, and offLanesAlpha value
          */
-        Bitmap getBitmap(Uri uri, int width, int height, float offLanesAlpha) throws IllegalArgumentException;
+        Bitmap getBitmap(@NonNull Uri uri, int width, int height, float offLanesAlpha);
     }
 
     /**
