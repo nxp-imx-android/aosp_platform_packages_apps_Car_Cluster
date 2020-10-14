@@ -49,6 +49,8 @@
 
     <dimen name="lane_icon_offset">12.5dp</dimen>
 
+    <item name="non_imminent_alpha" type="dimen" format="float">0.5</item>
+
     <!--                                   -->
     <!-- Sensor value conversion constants -->
     <!--                                   -->
