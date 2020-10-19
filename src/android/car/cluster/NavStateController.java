@@ -33,6 +33,7 @@ import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -130,6 +131,12 @@ public class NavStateController {
         }
 
         Step step = state.getStepsCount() > 0 ? state.getSteps(0) : null;
+
+        // Get alpha based on is_imminent
+        float alpha = (step != null && !step.getIsImminent())
+                ? getAlphaFromResource(R.dimen.non_imminent_alpha)
+                : 1f;
+
         Destination destination = state.getDestinationsCount() > 0
                 ? state.getDestinations(0) : null;
         Traffic traffic = destination != null ? destination.getTraffic() : null;
@@ -144,9 +151,11 @@ public class NavStateController {
         setProvidedManeuverIcon(mProvidedManeuver, step != null
                 ? step.getManeuver().hasIcon() ? step.getManeuver().getIcon() : null
                 : null);
+        mManeuver.setImageAlpha((int) (alpha * 255));
         mDistance.setText(formatDistance(step != null ? step.getDistance() : null));
+        mDistance.setAlpha(alpha);
         mSegment.setText(getSegmentString(state.getCurrentRoad()));
-        mCue.setCue(step != null ? step.getCue() : null, mImageResolver);
+        mCue.setCue(step != null ? step.getCue() : null, mImageResolver, alpha);
 
         if (step != null && step.getLanesCount() > 0) {
             if (step.hasLanesImage()) {
@@ -154,12 +163,22 @@ public class NavStateController {
                 mProvidedLane.setVisibility(View.VISIBLE);
             }
 
-            mLane.setLanes(step.getLanesList());
+            mLane.setLanes(step.getLanesList(), alpha);
             mLane.setVisibility(View.VISIBLE);
         } else {
             mLane.setVisibility(View.GONE);
             mProvidedLane.setVisibility(View.GONE);
         }
+
+    }
+
+    /**
+     * Get float value from dimens.xml, it only works for float format
+     */
+    private float getAlphaFromResource(int alphaId) {
+        TypedValue typedValue = new TypedValue();
+        mContext.getResources().getValue(alphaId, typedValue, true);
+        return typedValue.getFloat();
     }
 
     private int getTrafficColor(@Nullable Traffic traffic) {

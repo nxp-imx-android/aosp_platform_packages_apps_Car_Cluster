@@ -89,7 +89,7 @@ public class LaneView extends LinearLayout {
                 });
     }
 
-    public void setLanes(List<Lane> lanes) {
+    public void setLanes(List<Lane> lanes, float alpha) {
         mLanes = new ArrayList<>(lanes);
         removeAllViews();
 
@@ -99,6 +99,7 @@ public class LaneView extends LinearLayout {
             ImageView imgView = new ImageView(getContext());
             imgView.setImageBitmap(bitmap);
             imgView.setAdjustViewBounds(true);
+            imgView.setImageAlpha((int) (alpha * 255));
             addView(imgView);
         }
     }
@@ -237,5 +238,11 @@ public class LaneView extends LinearLayout {
                 return mContext.getDrawable(R.drawable.direction_uturn_right);
         }
         return null;
+    }
+
+    @Override
+    public void setAlpha(float alpha) {
+        super.setAlpha(alpha);
+
     }
 }

@@ -66,7 +66,7 @@ public class CueView extends TextView {
         mImageSpanText = context.getString(R.string.span_image);
     }
 
-    public void setCue(Cue cue, ImageResolver imageResolver) {
+    public void setCue(Cue cue, ImageResolver imageResolver, float alpha) {
         if (cue == null) {
             setText(null);
             return;
@@ -83,20 +83,21 @@ public class CueView extends TextView {
         mFuture = imageResolver
                 .getBitmaps(imageReferences, 0, getLineHeight())
                 .thenAccept(bitmaps -> {
-                    mHandler.post(() -> update(cue, bitmaps));
+                    mHandler.post(() -> update(cue, bitmaps, alpha));
                     mFuture = null;
                 })
                 .exceptionally(ex -> {
                     if (Log.isLoggable(TAG, Log.DEBUG)) {
                         Log.d(TAG, "Unable to fetch images for cue: " + cue);
                     }
-                    mHandler.post(() -> update(cue, Collections.emptyMap()));
+                    mHandler.post(
+                            () -> update(cue, Collections.emptyMap(), alpha));
                     return null;
                 });
         mContent = cue;
     }
 
-    private void update(Cue cue, Map<ImageReference, Bitmap> bitmaps) {
+    private void update(Cue cue, Map<ImageReference, Bitmap> bitmaps, float alpha) {
         SpannableStringBuilder builder = new SpannableStringBuilder();
 
         for (CueElement element : cue.getElementsList()) {
@@ -110,6 +111,7 @@ public class CueView extends TextView {
                     builder.append(imageText);
                     BitmapDrawable drawable = new BitmapDrawable(getResources(), bitmap);
                     drawable.setBounds(0, 0, bitmap.getWidth(), bitmap.getHeight());
+                    drawable.setAlpha((int) (alpha * 255));
                     builder.setSpan(new ImageSpan(drawable), start, end, 0);
                 }
             } else if (!element.getText().isEmpty()) {
@@ -118,5 +120,6 @@ public class CueView extends TextView {
         }
 
         setText(builder);
+        setAlpha(alpha);
     }
 }
