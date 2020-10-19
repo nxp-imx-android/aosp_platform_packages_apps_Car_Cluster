@@ -28,6 +28,7 @@ import android.car.cluster.navigation.NavigationState.NavigationStateProto;
 import android.car.cluster.renderer.InstrumentClusterRenderingService;
 import android.car.cluster.renderer.NavigationRenderer;
 import android.car.navigation.CarNavigationInstrumentCluster;
+import android.car.userlib.UserHelper;
 import android.content.BroadcastReceiver;
 import android.content.ComponentName;
 import android.content.Context;
@@ -189,6 +190,10 @@ public class ClusterRenderingService extends InstrumentClusterRenderingService i
                 return;
             }
             userId = ActivityManager.getCurrentUser();
+            if (UserHelper.isHeadlessSystemUser(userId)) {
+                Log.i(TAG, "Skipping the navigation activity for User 0");
+                return;
+            }
             startFixedActivityModeForDisplayAndUser(intent, options, userId);
         } else {
             intent = getMainClusterActivityIntent();
