@@ -38,7 +38,7 @@ import java.util.Set;
  * Top activity monitor, allows listeners to be notified when a new activity comes to the foreground
  * on a particular device.
  *
- * As a sanity check {@link #notifyTopActivities} is handed to the UI thread because it is triggered
+ * As a quick check {@link #notifyTopActivities} is handed to the UI thread because it is triggered
  * by {@link #mProcessObserver} and {@link #mTaskStackListener}, which may be called by background
  * threads.
  *

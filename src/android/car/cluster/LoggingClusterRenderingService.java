@@ -28,7 +28,7 @@ import com.google.android.collect.Lists;
 import com.google.protobuf.InvalidProtocolBufferException;
 
 /**
- * Dummy implementation of {@link LoggingClusterRenderingService} to log all interaction.
+ * Mock implementation of {@link ClusterRenderingService} to log all interaction.
  */
 public class LoggingClusterRenderingService extends InstrumentClusterRenderingService {
     private static final String TAG = LoggingClusterRenderingService.class.getSimpleName();
@@ -42,7 +42,7 @@ public class LoggingClusterRenderingService extends InstrumentClusterRenderingSe
                 Log.i(TAG, "getNavigationProperties");
                 CarNavigationInstrumentCluster config =
                         CarNavigationInstrumentCluster.createCluster(1000);
-                config.getExtra().putIntegerArrayList("dummy", Lists.newArrayList(1, 2, 3, 4));
+                config.getExtra().putIntegerArrayList("foo", Lists.newArrayList(1, 2, 3, 4));
                 Log.i(TAG, "getNavigationProperties, returns: " + config);
                 return config;
             }
